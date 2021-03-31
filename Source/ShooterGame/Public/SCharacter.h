@@ -78,6 +78,16 @@ protected:
 
 	void EquipRifle();
 
+	void EquipShotgun();
+
+	void EquipSniper();
+
+	void EquipGatling();
+
+	void EquipRocketLauncher();
+
+	void EquipGrenadeLauncher();
+
 	void StartFire();
 
 	void StopFire();

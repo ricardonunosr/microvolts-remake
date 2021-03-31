@@ -199,6 +199,46 @@ void ASCharacter::EquipRifle()
 	Equip(Loadout[1]);
 }
 
+void ASCharacter::EquipShotgun()
+{
+	if (Loadout.Num() < 3)
+		return;
+	JumpMaxCount = 1;
+	Equip(Loadout[2]);
+}
+
+void ASCharacter::EquipSniper()
+{
+	if (Loadout.Num() < 4)
+		return;
+	JumpMaxCount = 1;
+	Equip(Loadout[3]);
+}
+
+void ASCharacter::EquipGatling()
+{
+	if (Loadout.Num() < 5)
+		return;
+	JumpMaxCount = 1;
+	Equip(Loadout[4]);
+}
+
+void ASCharacter::EquipRocketLauncher()
+{
+	if (Loadout.Num() < 6)
+		return;
+	JumpMaxCount = 1;
+	Equip(Loadout[5]);
+}
+
+void ASCharacter::EquipGrenadeLauncher()
+{
+	if (Loadout.Num() < 7)
+		return;
+	JumpMaxCount = 1;
+	Equip(Loadout[6]);
+}
+
 void ASCharacter::StartFire()
 {
 	if (CurrentWeapon)
@@ -324,6 +364,11 @@ void ASCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 
 	PlayerInputComponent->BindAction("EquipMelee", IE_Pressed, this, &ASCharacter::EquipMeele);
 	PlayerInputComponent->BindAction("EquipRifle", IE_Pressed, this, &ASCharacter::EquipRifle);
+	PlayerInputComponent->BindAction("EquipShotgun", IE_Pressed, this, &ASCharacter::EquipShotgun);
+	PlayerInputComponent->BindAction("EquipSniper", IE_Pressed, this, &ASCharacter::EquipSniper);
+	PlayerInputComponent->BindAction("EquipGatling", IE_Pressed, this, &ASCharacter::EquipGatling);
+	PlayerInputComponent->BindAction("EquipRocketLauncher", IE_Pressed, this, &ASCharacter::EquipRocketLauncher);
+	PlayerInputComponent->BindAction("EquipGrenadeLauncher", IE_Pressed, this, &ASCharacter::EquipGrenadeLauncher);
 
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ASCharacter::StartFire);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &ASCharacter::StopFire);
