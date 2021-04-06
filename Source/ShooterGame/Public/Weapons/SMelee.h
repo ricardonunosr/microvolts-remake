@@ -15,8 +15,5 @@ class SHOOTERGAME_API ASMelee : public ASWeapon
 {
 	GENERATED_BODY()
 protected:
-	void Fire();
-
-public:
-	void StartFire() override;
+	virtual void Fire() override;
 };

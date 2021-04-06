@@ -12,6 +12,7 @@ ASBot::ASBot()
 
 	HealthComp = CreateDefaultSubobject<USHealthComponent>(TEXT("HealthComp"));
 
+	
 	bDied = false;
 }
 

@@ -14,104 +14,181 @@ static int32 DebugWeaponDrawing = 0;
 FAutoConsoleVariableRef CVARDebugWeaponDrawing(
 	TEXT("S.DebugWeapons"), DebugWeaponDrawing, TEXT("Draw Debug Lines for Weapons"), ECVF_Cheat);
 
-// Sets default values
 ASWeapon::ASWeapon()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	RootComponent = MeshComp;
 
-	TimeBetweenShots = 60 / Config.RateOfFire;
+	bIsSecundaryFireActive = false;
+	bIsReloading = false;
+	bIsRefering = false;
+
+	CurrentState = EWeaponState::Idle;
 	CurrentTotalAmmo = 0;
 	CurrentAmmo = 0;
+	LastFireTime = 0.0f;
 }
 
 void ASWeapon::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	CurrentTotalAmmo = Config.TotalAmmo;
-	CurrentAmmo = Config.MagSize;
+	CurrentTotalAmmo = WeaponConfig.TotalAmmo;
+	CurrentAmmo = WeaponConfig.MagSize;
 }
 
-// Called when the game starts or when spawned
-void ASWeapon::BeginPlay()
+void ASWeapon::OnEquip()
 {
-	Super::BeginPlay();
+}
+
+void ASWeapon::OnUnEquip()
+{
+	LastFireTime = 0;
+	GetWorldTimerManager().ClearTimer(TimerHandle_TimeBetweenShots);
+	GetWorldTimerManager().ClearTimer(TimerHandle_ReloadTime);
+}
+
+void ASWeapon::StartFire()
+{
+	SetWeaponState(EWeaponState::Firing);
+}
+
+void ASWeapon::StopFire()
+{
+	SetWeaponState(EWeaponState::Idle);
+}
+
+void ASWeapon::OnBurstStarted()
+{
+	const float GameTime = GetWorld()->GetTimeSeconds();
+	if (LastFireTime > 0 && LastFireTime + WeaponConfig.TimeBetweenShots > GameTime)
+	{
+		GetWorldTimerManager().SetTimer(TimerHandle_TimeBetweenShots, this, &ASWeapon::HandleFiring,
+			LastFireTime + WeaponConfig.TimeBetweenShots - GameTime, false);
+	}
+	else
+	{
+		HandleFiring();
+	}
+}
+
+void ASWeapon::OnBurstEnded()
+{
+	CurrentSpread = 0;
+	bIsRefering = false;
+	GetWorldTimerManager().ClearTimer(TimerHandle_TimeBetweenShots);
+}
+
+void ASWeapon::HandleFiring()
+{
+	if (CanFire())
+	{
+		Fire();
+	}
+	else if (CanReload())
+	{
+		StartReload();
+	}
+	else
+	{
+		StopFire();
+	}
+
+	bIsRefering = CurrentState == EWeaponState::Firing;
+	if (bIsRefering)
+	{
+		GetWorldTimerManager().SetTimer(
+			TimerHandle_TimeBetweenShots, this, &ASWeapon::HandleFiring, WeaponConfig.TimeBetweenShots, false);
+	}
+	LastFireTime = GetWorld()->GetTimeSeconds();
+}
+
+void ASWeapon::StartSecondaryFire()
+{
+	SecondaryFire();
+}
+
+void ASWeapon::StartReload()
+{
+	if (CanReload())
+	{
+		bIsReloading = true;
+		OnReload.Broadcast(this);
+		GetWorldTimerManager().SetTimer(TimerHandle_ReloadTime, this, &ASWeapon::Reload, WeaponConfig.ReloadTime, false);
+	}
+}
+
+void ASWeapon::StopReload()
+{
+	if (bIsReloading)
+	{
+		bIsReloading = false;
+		GetWorldTimerManager().ClearTimer(TimerHandle_TimeBetweenShots);
+		GetWorldTimerManager().ClearTimer(TimerHandle_ReloadTime);
+	}
+}
+
+void ASWeapon::ResetWeapon()
+{
+	CurrentTotalAmmo = WeaponConfig.TotalAmmo;
+	CurrentAmmo = WeaponConfig.MagSize;
+}
+
+EWeaponState::Type ASWeapon::GetCurrentState()
+{
+	return CurrentState;
 }
 
 void ASWeapon::Reload()
 {
-	if (CurrentTotalAmmo <= 0)
-		return;
-	int32 AmmoDif = Config.MagSize - CurrentAmmo;
+	int32 AmmoDif = WeaponConfig.MagSize - CurrentAmmo;
 	int32 Delta = FMath::Min(CurrentTotalAmmo, AmmoDif);
 	CurrentAmmo += Delta;
 	CurrentTotalAmmo -= Delta;
 
 	bIsReloading = false;
-	GetWorldTimerManager().ClearTimer(TimerHandle_ReloadTime);
 }
 
-void ASWeapon::Fire()
+void ASWeapon::SecondaryFire()
 {
-	AActor* MyOwner = GetOwner();
+	bIsSecundaryFireActive = !bIsSecundaryFireActive;
+	bIsSecundaryFireActive ? CurrentState = EWeaponState::SecondaryFiring : CurrentState = EWeaponState::Idle;
+	OnSecondaryFire.Broadcast(this);
+}
 
-	if (MyOwner && !bIsReloading)
+void ASWeapon::SetWeaponState(EWeaponState::Type NewState)
+{
+	const EWeaponState::Type PrevState = CurrentState;
+
+	if (PrevState == EWeaponState::Firing && NewState != EWeaponState::Firing)
 	{
-		FVector EyeLocation;
-		FRotator EyeRotation;
-
-		MyOwner->GetActorEyesViewPoint(EyeLocation, EyeRotation);
-
-		FVector ShotDirection = EyeRotation.Vector();
-
-		const int32 RandomSeed = FMath::Rand();
-		FRandomStream WeaponRandomStream(RandomSeed);
-		const float ConeHalfAngle = FMath::DegreesToRadians(CurrentSpread * 0.5f);
-
-		const FVector ShootDir = WeaponRandomStream.VRandCone(ShotDirection, ConeHalfAngle, ConeHalfAngle);
-
-		FVector TraceEnd = EyeLocation + (ShootDir * 100000);
-
-		FHitResult Hit;
-
-		UKismetSystemLibrary::PrintString(GetWorld(), "CurrentSpread" + FString::SanitizeFloat(CurrentSpread));
-
-		CurrentSpread = FMath::Min(Config.MaxSpread, CurrentSpread + Config.SpreadIncrement);
-
-		FCollisionQueryParams QueryParams;
-		QueryParams.AddIgnoredActor(MyOwner);
-		QueryParams.AddIgnoredActor(this);
-		QueryParams.bTraceComplex = true;
-
-		FVector TracerEndPoint = TraceEnd;
-
-		if (GetWorld()->LineTraceSingleByChannel(Hit, EyeLocation, TraceEnd, ECC_Visibility, QueryParams))
-		{
-			UGameplayStatics::ApplyPointDamage(
-				Hit.GetActor(), 20.0f, ShotDirection, Hit, MyOwner->GetInstigatorController(), this, DamageType);
-			if (CurrentAmmo == 0)
-				StartReload();
-			if (CurrentAmmo > 0)
-				CurrentAmmo--;
-
-			EPhysicalSurface SurfaceType = UPhysicalMaterial::DetermineSurfaceType(Hit.PhysMaterial.Get());
-			PlayImpactEffects(SurfaceType, Hit.ImpactPoint);
-			TracerEndPoint = Hit.ImpactPoint;
-		}
-
-		PlayFireEffects(TracerEndPoint);
-		PlaySounds(MyOwner->GetActorLocation());
-
-		if (DebugWeaponDrawing > 0)
-		{
-			DrawDebugLine(GetWorld(), EyeLocation, TraceEnd, FColor::Red, false, 1.0f, 0, 1.0f);
-		}
+		OnBurstEnded();
 	}
+
+	CurrentState = NewState;
+
+	if (PrevState != EWeaponState::Firing && NewState == EWeaponState::Firing)
+	{
+		OnBurstStarted();
+	}
+}
+
+bool ASWeapon::CanReload()
+{
+	return CurrentAmmo < WeaponConfig.MagSize && CurrentTotalAmmo > 0;
+}
+
+bool ASWeapon::CanFire()
+{
+	return CurrentAmmo > 0;
+}
+
+void ASWeapon::UseAmmo()
+{
+	CurrentAmmo--;
 }
 
 void ASWeapon::PlayImpactEffects(EPhysicalSurface Surface, FVector ImpactPoint)
@@ -121,10 +198,6 @@ void ASWeapon::PlayImpactEffects(EPhysicalSurface Surface, FVector ImpactPoint)
 	ShotDirection.Normalize();
 
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DefaultImpactEffect, ImpactPoint, ShotDirection.Rotation());
-}
-
-void ASWeapon::PlaySounds(FVector ActorLocation)
-{
 }
 
 void ASWeapon::PlayFireEffects(FVector ImpactPoint)
@@ -141,44 +214,6 @@ void ASWeapon::PlayFireEffects(FVector ImpactPoint)
 	}
 }
 
-bool ASWeapon::CanReload()
+void ASWeapon::PlaySounds(FVector ActorLocation)
 {
-	return CurrentAmmo < Config.MagSize && CurrentTotalAmmo > 0;
-}
-
-// Called every frame
-void ASWeapon::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-
-void ASWeapon::StartFire()
-{
-	float FirstDelay = FMath::Max(LastFireTime + TimeBetweenShots - GetWorld()->TimeSeconds, 0.0f);
-
-	if (CurrentAmmo <= 0)
-		return;
-	GetWorldTimerManager().SetTimer(TimerHandle_TimeBetweenShots, this, &ASWeapon::Fire, TimeBetweenShots, true, FirstDelay);
-}
-
-void ASWeapon::StopFire()
-{
-	CurrentSpread = 0;
-	GetWorldTimerManager().ClearTimer(TimerHandle_TimeBetweenShots);
-}
-
-void ASWeapon::StartReload()
-{
-	if (CanReload())
-	{
-		bIsReloading = true;
-		OnReload.Broadcast(this);
-		GetWorldTimerManager().SetTimer(TimerHandle_ReloadTime, this, &ASWeapon::Reload, Config.ReloadTime, true);
-	}
-}
-
-void ASWeapon::ResetWeapon()
-{
-	CurrentTotalAmmo = Config.TotalAmmo;
-	CurrentAmmo = Config.MagSize;
 }

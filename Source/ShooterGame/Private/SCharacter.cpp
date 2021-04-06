@@ -42,6 +42,7 @@ void ASCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	DefaultFOV = CameraComp->FieldOfView;
+	DefaultWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
 }
 
 void ASCharacter::PostInitializeComponents()
@@ -49,7 +50,7 @@ void ASCharacter::PostInitializeComponents()
 	Super::PostInitializeComponents();
 
 	SpawnLoadout();
-	EquipMeele();
+	StartEquip(0, EWeaponType::E_Melee);
 }
 
 void ASCharacter::MoveForward(float Value)
@@ -181,64 +182,6 @@ void ASCharacter::UpdateRifleRotation()
 	}
 }
 
-void ASCharacter::EquipMeele()
-{
-	if (Loadout.Num() < 1)
-		return;
-	JumpMaxCount = 2;
-	UpdateWeaponAnimation(EWeaponType::E_Melee);
-	Equip(Loadout[0]);
-}
-
-void ASCharacter::EquipRifle()
-{
-	if (Loadout.Num() < 2)
-		return;
-	JumpMaxCount = 1;
-	UpdateWeaponAnimation(EWeaponType::E_Rifle);
-	Equip(Loadout[1]);
-}
-
-void ASCharacter::EquipShotgun()
-{
-	if (Loadout.Num() < 3)
-		return;
-	JumpMaxCount = 1;
-	Equip(Loadout[2]);
-}
-
-void ASCharacter::EquipSniper()
-{
-	if (Loadout.Num() < 4)
-		return;
-	JumpMaxCount = 1;
-	Equip(Loadout[3]);
-}
-
-void ASCharacter::EquipGatling()
-{
-	if (Loadout.Num() < 5)
-		return;
-	JumpMaxCount = 1;
-	Equip(Loadout[4]);
-}
-
-void ASCharacter::EquipRocketLauncher()
-{
-	if (Loadout.Num() < 6)
-		return;
-	JumpMaxCount = 1;
-	Equip(Loadout[5]);
-}
-
-void ASCharacter::EquipGrenadeLauncher()
-{
-	if (Loadout.Num() < 7)
-		return;
-	JumpMaxCount = 1;
-	Equip(Loadout[6]);
-}
-
 void ASCharacter::StartFire()
 {
 	if (CurrentWeapon)
@@ -252,6 +195,31 @@ void ASCharacter::StopFire()
 	if (CurrentWeapon)
 	{
 		CurrentWeapon->StopFire();
+	}
+}
+
+void ASCharacter::StartSecondaryFire()
+{
+	if (CurrentWeapon)
+	{
+		CurrentWeapon->StartSecondaryFire();
+		EWeaponState::Type CurrentState = CurrentWeapon->GetCurrentState();
+		if (CurrentWeapon->WeaponType == EWeaponType::E_Sniper && CurrentState == EWeaponState::SecondaryFiring)
+		{
+			GetCharacterMovement()->MaxWalkSpeed = DefaultWalkSpeed * 0.5;
+		}
+		else
+		{
+			GetCharacterMovement()->MaxWalkSpeed = DefaultWalkSpeed;
+		}
+	}
+}
+
+void ASCharacter::StopSecondaryFire()
+{
+	if (CurrentWeapon)
+	{
+		// CurrentWeapon->StopSecondaryFire();
 	}
 }
 
@@ -280,6 +248,14 @@ void ASCharacter::StartReload()
 	}
 }
 
+void ASCharacter::StopReload()
+{
+	if (CurrentWeapon)
+	{
+		CurrentWeapon->StopReload();
+	}
+}
+
 void ASCharacter::StartZoom()
 {
 	bWantsToZoom = true;
@@ -294,7 +270,7 @@ void ASCharacter::UpdateZoom(float DeltaTime)
 {
 	if (CurrentWeapon)
 	{
-		if (CurrentWeapon->WeaponType != EWeaponType::E_Melee)
+		if (CurrentWeapon->WeaponType == EWeaponType::E_Rifle)
 		{
 			float TargetFOV = bWantsToZoom ? ZoomedFOV : DefaultFOV;
 			float NewFOV = FMath::FInterpTo(CameraComp->FieldOfView, TargetFOV, DeltaTime, ZoomInterSpeed);
@@ -329,13 +305,26 @@ void ASCharacter::AddWeapon(ASWeapon* NewWeapon)
 	Loadout.AddUnique(NewWeapon);
 }
 
+void ASCharacter::StartEquip(int32 LoadoutIndex, EWeaponType WeaponType)
+{
+	WeaponType == EWeaponType::E_Melee ? JumpMaxCount = 2 : JumpMaxCount = 1;
+	UpdateWeaponAnimation(WeaponType);
+	Equip(Loadout[LoadoutIndex]);
+	OnEquip.Broadcast(Loadout[LoadoutIndex]);
+}
+
 void ASCharacter::Equip(ASWeapon* EquipWeapon)
 {
 	if (CurrentWeapon)
 	{
 		if (EquipWeapon != CurrentWeapon)
+		{
 			CurrentWeapon->SetActorHiddenInGame(true);
+			CurrentWeapon->StartReload();
+		}
 
+		EquipWeapon->OnUnEquip();
+		EquipWeapon->StopReload();
 		CurrentWeapon = EquipWeapon;
 		CurrentWeapon->SetActorHiddenInGame(false);
 	}
@@ -362,21 +351,27 @@ void ASCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ASCharacter::BeginCrouch);
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &ASCharacter::EndCrouch);
 
-	PlayerInputComponent->BindAction("EquipMelee", IE_Pressed, this, &ASCharacter::EquipMeele);
-	PlayerInputComponent->BindAction("EquipRifle", IE_Pressed, this, &ASCharacter::EquipRifle);
-	PlayerInputComponent->BindAction("EquipShotgun", IE_Pressed, this, &ASCharacter::EquipShotgun);
-	PlayerInputComponent->BindAction("EquipSniper", IE_Pressed, this, &ASCharacter::EquipSniper);
-	PlayerInputComponent->BindAction("EquipGatling", IE_Pressed, this, &ASCharacter::EquipGatling);
-	PlayerInputComponent->BindAction("EquipRocketLauncher", IE_Pressed, this, &ASCharacter::EquipRocketLauncher);
-	PlayerInputComponent->BindAction("EquipGrenadeLauncher", IE_Pressed, this, &ASCharacter::EquipGrenadeLauncher);
+	PlayerInputComponent->BindAction<FEquipActionDelegate>(
+		"EquipMelee", IE_Pressed, this, &ASCharacter::StartEquip, 0, EWeaponType::E_Melee);
+	PlayerInputComponent->BindAction<FEquipActionDelegate>(
+		"EquipRifle", IE_Pressed, this, &ASCharacter::StartEquip, 1, EWeaponType::E_Rifle);
+	PlayerInputComponent->BindAction<FEquipActionDelegate>(
+		"EquipShotgun", IE_Pressed, this, &ASCharacter::StartEquip, 2, EWeaponType::E_Shotgun);
+	PlayerInputComponent->BindAction<FEquipActionDelegate>(
+		"EquipSniper", IE_Pressed, this, &ASCharacter::StartEquip, 3, EWeaponType::E_Sniper);
+	PlayerInputComponent->BindAction<FEquipActionDelegate>(
+		"EquipGatling", IE_Pressed, this, &ASCharacter::StartEquip, 4, EWeaponType::E_Gatling);
+	PlayerInputComponent->BindAction<FEquipActionDelegate>(
+		"EquipRocketLauncher", IE_Pressed, this, &ASCharacter::StartEquip, 5, EWeaponType::E_RocketLauncher);
+	PlayerInputComponent->BindAction<FEquipActionDelegate>(
+		"EquipGrenadeLauncher", IE_Pressed, this, &ASCharacter::StartEquip, 6, EWeaponType::E_GrenadeLauncher);
 
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ASCharacter::StartFire);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &ASCharacter::StopFire);
 
 	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &ASCharacter::StartReload);
 
-	PlayerInputComponent->BindAction("Zoom", IE_Pressed, this, &ASCharacter::StartZoom);
-	PlayerInputComponent->BindAction("Zoom", IE_Released, this, &ASCharacter::EndZoom);
+	PlayerInputComponent->BindAction("SecondaryFire", IE_Pressed, this, &ASCharacter::StartSecondaryFire);
 }
 
 FVector ASCharacter::GetPawnViewLocation() const
@@ -393,8 +388,8 @@ void ASCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	UpdateHeadRotation();
-	UpdateRifleRotation();
+	// UpdateHeadRotation();
+	// UpdateRifleRotation();
 
 	UpdateZoom(DeltaTime);
 }

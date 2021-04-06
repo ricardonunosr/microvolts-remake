@@ -9,11 +9,24 @@
 #include "SWeapon.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnReloadSignature, ASWeapon*, OwningWeapon);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSecondaryFireSignature, ASWeapon*, OwningWeapon);
 
 class UDamageType;
 class UParticleSystem;
 class UTexture2D;
 class UNiagaraSystem;
+
+namespace EWeaponState
+{
+enum Type
+{
+	Idle,
+	Firing,
+	Reloading,
+	Equipping,
+	SecondaryFiring,
+};
+}
 
 USTRUCT(BlueprintType)
 struct FWeaponConfig
@@ -26,25 +39,33 @@ struct FWeaponConfig
 	int32 MagSize;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = WeaponStat)
+	float HitDamage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = WeaponStat)
 	float MaxSpread;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = WeaponStat)
 	float SpreadIncrement;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = WeaponStat)
-	float RateOfFire;
+	float TimeBetweenShots;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = WeaponStat)
 	float ReloadTime;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = WeaponStat)
+	bool bHasAutomaticFiring;
 
 	FWeaponConfig()
 	{
 		TotalAmmo = 80;
 		MagSize = 40;
+		HitDamage = 20;
 		MaxSpread = 3.0f;
 		SpreadIncrement = 0.1f;
-		RateOfFire = 600.0f;
+		TimeBetweenShots = 0.2f;
 		ReloadTime = 1;
+		bHasAutomaticFiring = false;
 	}
 };
 
@@ -57,77 +78,31 @@ public:
 	// Sets default values for this actor's properties
 	ASWeapon();
 
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	virtual void PostInitializeComponents() override;
 
-	UPROPERTY(EditAnywhere, Category = "Components")
-	UStaticMeshComponent* MeshComp;
+	virtual void OnEquip();
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
-	TSubclassOf<UDamageType> DamageType;
-
-	FTimerHandle TimerHandle_TimeBetweenShots;
-
-	FTimerHandle TimerHandle_ReloadTime;
-
-	float LastFireTime;
-
-	float TimeBetweenShots;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Weapon")
-	int32 CurrentTotalAmmo;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Weapon")
-	int32 CurrentAmmo;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
-	FName Name;
-
-	void Reload();
-
-	void Fire();
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
-	UNiagaraSystem* TracerEffect;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
-	UParticleSystem* DefaultImpactEffect;
-
-	void PlayImpactEffects(EPhysicalSurface Surface, FVector ImpactPoint);
-
-	void PlaySounds(FVector ActorLocation);
-
-	void PlayFireEffects(FVector ImpactPoint);
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = HUD)
-	UTexture2D* PrimaryIcon;
-
-	float CurrentSpread;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
-	FWeaponConfig Config;
-
-	bool bIsReloading;
-
-	UPROPERTY(BlueprintAssignable, Category = "Events")
-	FOnReloadSignature OnReload;
-
-	bool CanReload();
-
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
-	void PostInitializeComponents();
+	virtual void OnUnEquip();
 
 	virtual void StartFire();
 
-	void StopFire();
+	virtual void StopFire();
 
-	void StartReload();
+	virtual void OnBurstStarted();
 
-	void ResetWeapon();
+	virtual void OnBurstEnded();
+
+	virtual void HandleFiring();
+
+	virtual void StartSecondaryFire();
+
+	virtual void StartReload();
+
+	virtual void StopReload();
+
+	virtual void ResetWeapon();
+
+	EWeaponState::Type GetCurrentState();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	FName WeaponMuzzleSocketName;
@@ -137,4 +112,81 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
 	EWeaponType WeaponType;
+
+protected:
+	UPROPERTY(EditAnywhere, Category = "Components")
+	UStaticMeshComponent* MeshComp;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
+	FName Name;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	TSubclassOf<UDamageType> DamageType;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Weapon")
+	int32 CurrentTotalAmmo;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Weapon")
+	int32 CurrentAmmo;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	UNiagaraSystem* TracerEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	UParticleSystem* DefaultImpactEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = HUD)
+	UTexture2D* PrimaryIcon;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = HUD)
+	UTexture2D* Crosshair;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	FWeaponConfig WeaponConfig;
+
+	// Events
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnReloadSignature OnReload;
+
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnSecondaryFireSignature OnSecondaryFire;
+
+	EWeaponState::Type CurrentState;
+
+	float CurrentSpread;
+
+	bool bIsRefering;
+
+	bool bIsReloading;
+
+	bool bIsSecundaryFireActive;
+
+	float LastFireTime;
+
+	float TimeBetweenShots;
+
+	// Timers
+	FTimerHandle TimerHandle_TimeBetweenShots;
+
+	FTimerHandle TimerHandle_ReloadTime;
+
+	virtual void Fire() PURE_VIRTUAL(ASWeapon::Fire, );
+
+	virtual void SecondaryFire();
+
+	void SetWeaponState(EWeaponState::Type NewState);
+
+	bool CanReload();
+
+	bool CanFire();
+
+	void UseAmmo();
+
+	void Reload();
+
+	void PlayImpactEffects(EPhysicalSurface Surface, FVector ImpactPoint);
+
+	void PlayFireEffects(FVector ImpactPoint);
+
+	void PlaySounds(FVector ActorLocation);
 };

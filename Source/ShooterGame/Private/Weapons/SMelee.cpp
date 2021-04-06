@@ -5,8 +5,3 @@
 void ASMelee::Fire()
 {
 }
-
-void ASMelee::StartFire()
-{
-	Fire();
-}

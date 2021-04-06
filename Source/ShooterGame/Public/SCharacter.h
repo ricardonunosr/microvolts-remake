@@ -8,6 +8,9 @@
 
 #include "SCharacter.generated.h"
 
+DECLARE_DELEGATE_TwoParams(FEquipActionDelegate, int32, EWeaponType);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEquipSignature, ASWeapon*, CurrentWeapon);
+
 class USpringArmComponent;
 class UCameraComponent;
 class ASWeapon;
@@ -68,29 +71,26 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
 	ASWeapon* CurrentWeapon;
 
+	float DefaultWalkSpeed;
+
 	void SpawnLoadout();
 
 	void AddWeapon(ASWeapon* NewWeapon);
 
+	void StartEquip(int32 LoadoutIndex, EWeaponType WeaponType);
+
 	void Equip(ASWeapon* EquipWeapon);
 
-	void EquipMeele();
-
-	void EquipRifle();
-
-	void EquipShotgun();
-
-	void EquipSniper();
-
-	void EquipGatling();
-
-	void EquipRocketLauncher();
-
-	void EquipGrenadeLauncher();
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnEquipSignature OnEquip;
 
 	void StartFire();
 
 	void StopFire();
+
+	void StartSecondaryFire();
+
+	void StopSecondaryFire();
 
 	void UpdateWeaponAnimation(EWeaponType CurrentWeaponType);
 
@@ -98,6 +98,8 @@ protected:
 	void ResetWeapons();
 
 	void StartReload();
+
+	void StopReload();
 
 	bool bWantsToZoom;
 
