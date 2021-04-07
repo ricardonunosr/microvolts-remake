@@ -5,6 +5,7 @@
 #include "Animation/AnimInstance.h"
 #include "CoreMinimal.h"
 #include "ShooterGame/ShooterGame.h"
+#include "ShooterGameWeapons/ShooterGameWeapons.h"
 
 #include "SAnimInstance.generated.h"
 

@@ -1,9 +1,20 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Weapons/SGrenadeProjectile.h"
+#include "SGrenadeProjectile.h"
 
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+
+ASGrenadeProjectile::ASGrenadeProjectile()
+{
+	MeshComp->SetSimulatePhysics(true);
+
+	ProjetileMovementComp->InitialSpeed = 2000.0f;
+	ProjetileMovementComp->MaxSpeed = 2000.0f;
+
+	ProjetileMovementComp->bShouldBounce = true;
+}
 
 void ASGrenadeProjectile::BeginPlay()
 {

@@ -2,8 +2,8 @@
 
 #pragma once
 
+#include "Abstract/SProjectile.h"
 #include "CoreMinimal.h"
-#include "SProjectile.h"
 
 #include "SRocketProjectile.generated.h"
 
@@ -11,7 +11,7 @@
  *
  */
 UCLASS()
-class SHOOTERGAME_API ASRocketProjectile : public ASProjectile
+class SHOOTERGAMEWEAPONS_API ASRocketProjectile : public ASProjectile
 {
 	GENERATED_BODY()
 

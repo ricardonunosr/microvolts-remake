@@ -2,8 +2,8 @@
 
 #pragma once
 
+#include "Abstract/SWeapon.h"
 #include "CoreMinimal.h"
-#include "SWeapon.h"
 
 #include "SMelee.generated.h"
 
@@ -11,7 +11,7 @@
  *
  */
 UCLASS()
-class SHOOTERGAME_API ASMelee : public ASWeapon
+class SHOOTERGAMEWEAPONS_API ASMelee : public ASWeapon
 {
 	GENERATED_BODY()
 protected:

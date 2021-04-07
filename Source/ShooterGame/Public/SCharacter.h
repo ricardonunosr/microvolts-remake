@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "ShooterGame/ShooterGame.h"
+#include "ShooterGameWeapons/ShooterGameWeapons.h"
 
 #include "SCharacter.generated.h"
 
@@ -90,6 +91,7 @@ protected:
 
 	void StartSecondaryFire();
 
+	UFUNCTION()
 	void StopSecondaryFire();
 
 	void UpdateWeaponAnimation(EWeaponType CurrentWeaponType);
@@ -112,7 +114,10 @@ protected:
 	float DefaultFOV;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Character")
-	float ZoomedFOV;
+	float RifleZoomedFOV;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Character")
+	float SniperZoomedFOV;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Character")
 	float ZoomInterSpeed;

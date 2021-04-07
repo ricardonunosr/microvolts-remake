@@ -1,6 +1,6 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "SWeapon.h"
+#include "Abstract/SWeapon.h"
 
 #include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
@@ -111,6 +111,11 @@ void ASWeapon::StartSecondaryFire()
 	SecondaryFire();
 }
 
+void ASWeapon::StopSecondaryFire()
+{
+	SecondaryFire();
+}
+
 void ASWeapon::StartReload()
 {
 	if (CanReload())
@@ -118,6 +123,7 @@ void ASWeapon::StartReload()
 		bIsReloading = true;
 		OnReload.Broadcast(this);
 		GetWorldTimerManager().SetTimer(TimerHandle_ReloadTime, this, &ASWeapon::Reload, WeaponConfig.ReloadTime, false);
+		bIsReloading = false;
 	}
 }
 
@@ -148,15 +154,13 @@ void ASWeapon::Reload()
 	int32 Delta = FMath::Min(CurrentTotalAmmo, AmmoDif);
 	CurrentAmmo += Delta;
 	CurrentTotalAmmo -= Delta;
-
-	bIsReloading = false;
 }
 
 void ASWeapon::SecondaryFire()
 {
 	bIsSecundaryFireActive = !bIsSecundaryFireActive;
 	bIsSecundaryFireActive ? CurrentState = EWeaponState::SecondaryFiring : CurrentState = EWeaponState::Idle;
-	OnSecondaryFire.Broadcast(this);
+	OnSecondaryFire.Broadcast();
 }
 
 void ASWeapon::SetWeaponState(EWeaponState::Type NewState)
@@ -216,4 +220,9 @@ void ASWeapon::PlayFireEffects(FVector ImpactPoint)
 
 void ASWeapon::PlaySounds(FVector ActorLocation)
 {
+	if (FireSound)
+	{
+		UGameplayStatics::SpawnSoundAttached(
+			FireSound, MeshComp, WeaponMuzzleSocketName, FVector::ZeroVector, EAttachLocation::KeepRelativeOffset);
+	}
 }

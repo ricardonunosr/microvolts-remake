@@ -1,13 +1,19 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Weapons/SRocketProjectile.h"
+#include "SRocketProjectile.h"
 
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 
 ASRocketProjectile::ASRocketProjectile()
 {
 	MeshComp->SetNotifyRigidBodyCollision(true);
+	MeshComp->SetSimulatePhysics(true);
+	MeshComp->SetEnableGravity(false);
+
+	ProjetileMovementComp->InitialSpeed = 2000.0f;
+	ProjetileMovementComp->MaxSpeed = 2000.0f;
 }
 
 void ASRocketProjectile::BeginPlay()

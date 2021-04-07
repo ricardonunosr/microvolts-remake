@@ -9,7 +9,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "SWeapon.h"
+#include "ShooterGameWeapons/Public/Abstract/SWeapon.h"
 
 #include <GameFramework/CharacterMovementComponent.h>
 #include <Kismet/KismetSystemLibrary.h>
@@ -32,7 +32,8 @@ ASCharacter::ASCharacter()
 	YawRightLimit = 70;
 	YawLeftLimit = -70;
 
-	ZoomedFOV = 60;
+	RifleZoomedFOV = 60;
+	SniperZoomedFOV = 20;
 	ZoomInterSpeed = 20.0f;
 }
 
@@ -202,25 +203,24 @@ void ASCharacter::StartSecondaryFire()
 {
 	if (CurrentWeapon)
 	{
-		CurrentWeapon->StartSecondaryFire();
 		EWeaponState::Type CurrentState = CurrentWeapon->GetCurrentState();
-		if (CurrentWeapon->WeaponType == EWeaponType::E_Sniper && CurrentState == EWeaponState::SecondaryFiring)
+		if (CurrentWeapon->WeaponType == EWeaponType::E_Sniper && CurrentState == EWeaponState::Idle)
 		{
+			CurrentWeapon->StartSecondaryFire();
+			CameraComp->SetFieldOfView(SniperZoomedFOV);
 			GetCharacterMovement()->MaxWalkSpeed = DefaultWalkSpeed * 0.5;
 		}
 		else
 		{
-			GetCharacterMovement()->MaxWalkSpeed = DefaultWalkSpeed;
+			CurrentWeapon->StartSecondaryFire();
 		}
 	}
 }
 
 void ASCharacter::StopSecondaryFire()
 {
-	if (CurrentWeapon)
-	{
-		// CurrentWeapon->StopSecondaryFire();
-	}
+	CameraComp->SetFieldOfView(DefaultFOV);
+	GetCharacterMovement()->MaxWalkSpeed = DefaultWalkSpeed;
 }
 
 void ASCharacter::UpdateWeaponAnimation(EWeaponType CurrentWeaponType)
@@ -272,7 +272,7 @@ void ASCharacter::UpdateZoom(float DeltaTime)
 	{
 		if (CurrentWeapon->WeaponType == EWeaponType::E_Rifle)
 		{
-			float TargetFOV = bWantsToZoom ? ZoomedFOV : DefaultFOV;
+			float TargetFOV = bWantsToZoom ? RifleZoomedFOV : DefaultFOV;
 			float NewFOV = FMath::FInterpTo(CameraComp->FieldOfView, TargetFOV, DeltaTime, ZoomInterSpeed);
 
 			CameraComp->SetFieldOfView(NewFOV);
@@ -295,6 +295,7 @@ void ASCharacter::SpawnLoadout()
 			WeaponSpawn->SetOwner(this);
 			WeaponSpawn->AttachToComponent(
 				GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSpawn->WeaponAttachSocketName);
+			WeaponSpawn->OnSecondaryFire.AddDynamic(this, &ASCharacter::StopSecondaryFire);
 			AddWeapon(WeaponSpawn);
 		}
 	}

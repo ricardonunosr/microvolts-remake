@@ -4,17 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "ShooterGame/ShooterGame.h"
+#include "ShooterGameWeapons/ShooterGameWeapons.h"
 
 #include "SWeapon.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnReloadSignature, ASWeapon*, OwningWeapon);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSecondaryFireSignature, ASWeapon*, OwningWeapon);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSecondaryFireSignature);
 
 class UDamageType;
 class UParticleSystem;
 class UTexture2D;
 class UNiagaraSystem;
+class USoundCue;
 
 namespace EWeaponState
 {
@@ -70,7 +71,7 @@ struct FWeaponConfig
 };
 
 UCLASS()
-class SHOOTERGAME_API ASWeapon : public AActor
+class SHOOTERGAMEWEAPONS_API ASWeapon : public AActor
 {
 	GENERATED_BODY()
 
@@ -96,6 +97,8 @@ public:
 
 	virtual void StartSecondaryFire();
 
+	virtual void StopSecondaryFire();
+
 	virtual void StartReload();
 
 	virtual void StopReload();
@@ -113,6 +116,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
 	EWeaponType WeaponType;
 
+	// Events
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnReloadSignature OnReload;
+
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnSecondaryFireSignature OnSecondaryFire;
+
 protected:
 	UPROPERTY(EditAnywhere, Category = "Components")
 	UStaticMeshComponent* MeshComp;
@@ -129,11 +139,14 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Weapon")
 	int32 CurrentAmmo;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Effects)
 	UNiagaraSystem* TracerEffect;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Effects)
 	UParticleSystem* DefaultImpactEffect;
+
+	UPROPERTY(EditDefaultsOnly, Category = Sound)
+	USoundBase* FireSound;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = HUD)
 	UTexture2D* PrimaryIcon;
@@ -141,15 +154,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = HUD)
 	UTexture2D* Crosshair;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Config)
 	FWeaponConfig WeaponConfig;
-
-	// Events
-	UPROPERTY(BlueprintAssignable, Category = "Events")
-	FOnReloadSignature OnReload;
-
-	UPROPERTY(BlueprintAssignable, Category = "Events")
-	FOnSecondaryFireSignature OnSecondaryFire;
 
 	EWeaponState::Type CurrentState;
 
@@ -173,6 +179,8 @@ protected:
 	virtual void Fire() PURE_VIRTUAL(ASWeapon::Fire, );
 
 	virtual void SecondaryFire();
+
+	void WeaponTrace();
 
 	void SetWeaponState(EWeaponState::Type NewState);
 

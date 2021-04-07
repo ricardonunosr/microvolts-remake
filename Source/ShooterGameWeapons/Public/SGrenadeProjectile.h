@@ -2,8 +2,8 @@
 
 #pragma once
 
+#include "Abstract/SProjectile.h"
 #include "CoreMinimal.h"
-#include "SProjectile.h"
 
 #include "SGrenadeProjectile.generated.h"
 
@@ -11,11 +11,13 @@
  *
  */
 UCLASS()
-class SHOOTERGAME_API ASGrenadeProjectile : public ASProjectile
+class SHOOTERGAMEWEAPONS_API ASGrenadeProjectile : public ASProjectile
 {
 	GENERATED_BODY()
 
 public:
+	ASGrenadeProjectile();
+
 	virtual void BeginPlay() override;
 
 protected:

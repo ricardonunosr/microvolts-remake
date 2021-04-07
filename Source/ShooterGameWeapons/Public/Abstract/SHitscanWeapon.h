@@ -2,8 +2,8 @@
 
 #pragma once
 
+#include "Abstract/SWeapon.h"
 #include "CoreMinimal.h"
-#include "SWeapon.h"
 
 #include "SHitscanWeapon.generated.h"
 
@@ -22,7 +22,7 @@ struct FHitscanConfig
 };
 
 UCLASS()
-class SHOOTERGAME_API ASHitscanWeapon : public ASWeapon
+class SHOOTERGAMEWEAPONS_API ASHitscanWeapon : public ASWeapon
 {
 	GENERATED_BODY()
 

@@ -13,7 +13,7 @@ class UProjectileMovementComponent;
 class UParticleSystem;
 class URadialForceComponent;
 
-UCLASS() class SHOOTERGAME_API ASProjectile : public AActor
+UCLASS() class SHOOTERGAMEWEAPONS_API ASProjectile : public AActor
 {
 	GENERATED_BODY()
 
