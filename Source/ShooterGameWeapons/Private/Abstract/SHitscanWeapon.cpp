@@ -3,6 +3,7 @@
 #include "Abstract/SHitscanWeapon.h"
 
 #include "Kismet/GameplayStatics.h"
+#include "Net/UnrealNetwork.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 
 void ASHitscanWeapon::Fire()
@@ -38,6 +39,7 @@ void ASHitscanWeapon::Fire()
 			FVector TraceEnd = EyeLocation + (ShootDir * 100000);
 			FVector TracerEndPoint = TraceEnd;
 
+			EPhysicalSurface SurfaceType = SurfaceType_Default;
 			CurrentSpread = FMath::Min(WeaponConfig.MaxSpread, CurrentSpread + WeaponConfig.SpreadIncrement);
 
 			if (GetWorld()->LineTraceSingleByChannel(Hit, EyeLocation, TraceEnd, ECC_Visibility, QueryParams))
@@ -45,13 +47,34 @@ void ASHitscanWeapon::Fire()
 				UGameplayStatics::ApplyPointDamage(Hit.GetActor(), WeaponConfig.HitDamage, ShotDirection, Hit,
 					MyOwner->GetInstigatorController(), this, DamageType);
 
-				EPhysicalSurface SurfaceType = UPhysicalMaterial::DetermineSurfaceType(Hit.PhysMaterial.Get());
+				SurfaceType = UPhysicalMaterial::DetermineSurfaceType(Hit.PhysMaterial.Get());
 				PlayImpactEffects(SurfaceType, Hit.ImpactPoint);
 				TracerEndPoint = Hit.ImpactPoint;
 			}
 			PlayFireEffects(TracerEndPoint);
+
+			if (GetLocalRole() == ROLE_Authority)
+			{
+				HitScanTrace.SurfaceType = SurfaceType;
+				HitScanTrace.TraceTo = TracerEndPoint;
+			}
 		}
+
 		UseAmmo();
 		PlaySounds(MyOwner->GetActorLocation());
 	}
+}
+
+void ASHitscanWeapon::OnRep_HitScanTrace()
+{
+	UE_LOG(LogTemp, Log, TEXT("hELLO"));
+	PlayFireEffects(HitScanTrace.TraceTo);
+	PlayImpactEffects(HitScanTrace.SurfaceType, HitScanTrace.TraceTo);
+}
+
+void ASHitscanWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME_CONDITION(ASHitscanWeapon, HitScanTrace, COND_SkipOwner);
 }

@@ -7,11 +7,8 @@
 
 #include "SHUD.generated.h"
 
-/**
- *
- */
-UCLASS(Abstract)
-class SHOOTERGAME_API ASHUD : public AHUD
+class UUserWidget;
+UCLASS(Abstract) class SHOOTERGAME_API ASHUD : public AHUD
 {
 	GENERATED_BODY()
 
@@ -26,13 +23,25 @@ private:
 
 protected:
 	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<class UUserWidget> OptionsMenuClass;
+	TSubclassOf<UUserWidget> MainHUDClass;
 
-	UPROPERTY()
-	class UUserWidget* OptionsMenu;
-
-	TArray<class UUserWidget*> PageStack;
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UUserWidget> OptionsMenuClass;
 
 public:
+	UPROPERTY(BlueprintReadOnly)
+	class UUserWidget* MainHUD;
+
+	UPROPERTY(BlueprintReadOnly)
+	class UUserWidget* OptionsMenu;
+
+	void CreateMainHUD();
+
+	void RemoveMainHUD();
+
+	void Tick(float DeltaTime) override;
+
+	virtual void BeginPlay() override;
+
 	void SHOptionsMenu();
 };

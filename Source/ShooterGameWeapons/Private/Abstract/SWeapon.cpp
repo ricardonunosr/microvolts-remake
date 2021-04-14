@@ -5,10 +5,12 @@
 #include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Net/UnrealNetwork.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
+#include "ShooterGameWeapons/ShooterGameWeapons.h"
 
 static int32 DebugWeaponDrawing = 0;
 FAutoConsoleVariableRef CVARDebugWeaponDrawing(
@@ -19,8 +21,13 @@ ASWeapon::ASWeapon()
 	PrimaryActorTick.bCanEverTick = true;
 
 	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
+	MeshComp->SetCollisionObjectType(ECC_WorldDynamic);
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	MeshComp->SetCollisionResponseToAllChannels(ECR_Ignore);
 	RootComponent = MeshComp;
+
+	bReplicates = true;
+	bAlwaysRelevant = true;
 
 	bIsSecundaryFireActive = false;
 	bIsReloading = false;
@@ -42,23 +49,72 @@ void ASWeapon::PostInitializeComponents()
 
 void ASWeapon::OnEquip()
 {
+	if (bIsReloading)
+	{
+		StopReload();
+	}
+
+	GetWorldTimerManager().ClearTimer(TimerHandle_ReloadTime);
+	GetWorldTimerManager().ClearTimer(TimerHandle_TimeBetweenShots);
 }
 
 void ASWeapon::OnUnEquip()
 {
+	if (CanReload())
+	{
+		StartReload();
+	}
+
 	LastFireTime = 0;
-	GetWorldTimerManager().ClearTimer(TimerHandle_TimeBetweenShots);
-	GetWorldTimerManager().ClearTimer(TimerHandle_ReloadTime);
+	StopSecondaryFire();
 }
 
 void ASWeapon::StartFire()
 {
-	SetWeaponState(EWeaponState::Firing);
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		ServerStartFire();
+	}
+
+	if (!bWantsToFire)
+	{
+		bWantsToFire = true;
+		DetermineWeaponState();
+	}
+}
+
+void ASWeapon::ServerStartFire_Implementation()
+{
+	StartFire();
+}
+
+bool ASWeapon::ServerStartFire_Validate()
+{
+	return true;
 }
 
 void ASWeapon::StopFire()
 {
-	SetWeaponState(EWeaponState::Idle);
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		ServerStopFire();
+	}
+
+	if (bWantsToFire)
+	{
+		bWantsToFire = false;
+		DetermineWeaponState();
+	}
+}
+
+void ASWeapon::ServerStopFire_Implementation()
+{
+	StopFire();
+}
+
+bool ASWeapon::ServerStopFire_Validate()
+{
+	return true;
 }
 
 void ASWeapon::OnBurstStarted()
@@ -87,6 +143,7 @@ void ASWeapon::HandleFiring()
 	if (CanFire())
 	{
 		Fire();
+		OnFire.Broadcast(this);
 	}
 	else if (CanReload())
 	{
@@ -95,6 +152,11 @@ void ASWeapon::HandleFiring()
 	else
 	{
 		StopFire();
+	}
+
+	if (CurrentAmmo <= 0 && CanReload())
+	{
+		StartReload();
 	}
 
 	bIsRefering = CurrentState == EWeaponState::Firing;
@@ -106,35 +168,90 @@ void ASWeapon::HandleFiring()
 	LastFireTime = GetWorld()->GetTimeSeconds();
 }
 
+void ASWeapon::HandleSecondFiring(bool bWasActive)
+{
+	if (bIsSecundaryFireActive == bWasActive)
+	{
+		StopSecondaryFire();
+		SecondaryFire();
+	}
+	else
+	{
+		SecondaryFire();
+	}
+}
+
 void ASWeapon::StartSecondaryFire()
 {
-	SecondaryFire();
+	bool bWasActive = bIsSecundaryFireActive;
+	bIsSecundaryFireActive = true;
+	HandleSecondFiring(bWasActive);
 }
 
 void ASWeapon::StopSecondaryFire()
 {
-	SecondaryFire();
+	bIsSecundaryFireActive = false;
 }
 
-void ASWeapon::StartReload()
+void ASWeapon::StartReload(bool bFromReplication)
 {
-	if (CanReload())
+	if (!bFromReplication && GetLocalRole() < ROLE_Authority)
 	{
-		bIsReloading = true;
-		OnReload.Broadcast(this);
-		GetWorldTimerManager().SetTimer(TimerHandle_ReloadTime, this, &ASWeapon::Reload, WeaponConfig.ReloadTime, false);
-		bIsReloading = false;
+		ServerStartReload();
 	}
+	else
+	{
+		if (bFromReplication || CanReload())
+		{
+			bIsReloading = true;
+			DetermineWeaponState();
+			OnStartReload.Broadcast(this);
+			if (GetLocalRole() == ROLE_Authority)
+			{
+				GetWorldTimerManager().SetTimer(
+					TimerHandle_StopReload, this, &ASWeapon::StopReload, WeaponConfig.ReloadTime, false);
+				GetWorldTimerManager().SetTimer(
+					TimerHandle_ReloadTime, this, &ASWeapon::Reload, WeaponConfig.ReloadTime - 0.1f, false);
+			}
+		}
+	}
+}
+
+void ASWeapon::ServerStartReload_Implementation()
+{
+	StartReload();
+}
+
+bool ASWeapon::ServerStartReload_Validate()
+{
+	return true;
 }
 
 void ASWeapon::StopReload()
 {
-	if (bIsReloading)
+	if (GetLocalRole() < ROLE_Authority)
 	{
-		bIsReloading = false;
-		GetWorldTimerManager().ClearTimer(TimerHandle_TimeBetweenShots);
-		GetWorldTimerManager().ClearTimer(TimerHandle_ReloadTime);
+		ServerStopReload();
 	}
+	else
+	{
+		if (CurrentState == EWeaponState::Reloading)
+		{
+			bIsReloading = false;
+			DetermineWeaponState();
+		}
+	}
+	OnStopReload.Broadcast(this);
+}
+
+void ASWeapon::ServerStopReload_Implementation()
+{
+	StopReload();
+}
+
+bool ASWeapon::ServerStopReload_Validate()
+{
+	return true;
 }
 
 void ASWeapon::ResetWeapon()
@@ -143,7 +260,7 @@ void ASWeapon::ResetWeapon()
 	CurrentAmmo = WeaponConfig.MagSize;
 }
 
-EWeaponState::Type ASWeapon::GetCurrentState()
+EWeaponState ASWeapon::GetCurrentState()
 {
 	return CurrentState;
 }
@@ -156,16 +273,49 @@ void ASWeapon::Reload()
 	CurrentTotalAmmo -= Delta;
 }
 
-void ASWeapon::SecondaryFire()
+void ASWeapon::OnRepReload()
 {
-	bIsSecundaryFireActive = !bIsSecundaryFireActive;
-	bIsSecundaryFireActive ? CurrentState = EWeaponState::SecondaryFiring : CurrentState = EWeaponState::Idle;
-	OnSecondaryFire.Broadcast();
+	if (bIsReloading)
+	{
+		StartReload(true);
+	}
+	else
+	{
+		StopReload();
+	}
 }
 
-void ASWeapon::SetWeaponState(EWeaponState::Type NewState)
+void ASWeapon::SecondaryFire()
 {
-	const EWeaponState::Type PrevState = CurrentState;
+	OnSecondaryFire.Broadcast(bIsSecundaryFireActive);
+}
+
+void ASWeapon::DetermineWeaponState()
+{
+	EWeaponState NewState = EWeaponState::Idle;
+
+	if (bIsReloading)
+	{
+		if (CanReload() == false)
+		{
+			NewState = CurrentState;
+		}
+		else
+		{
+			NewState = EWeaponState::Reloading;
+		}
+	}
+	else if ((bIsReloading == false) && (bWantsToFire == true) && (CanFire() == true))
+	{
+		NewState = EWeaponState::Firing;
+	}
+
+	SetWeaponState(NewState);
+}
+
+void ASWeapon::SetWeaponState(EWeaponState NewState)
+{
+	const EWeaponState PrevState = CurrentState;
 
 	if (PrevState == EWeaponState::Firing && NewState != EWeaponState::Firing)
 	{
@@ -182,7 +332,9 @@ void ASWeapon::SetWeaponState(EWeaponState::Type NewState)
 
 bool ASWeapon::CanReload()
 {
-	return CurrentAmmo < WeaponConfig.MagSize && CurrentTotalAmmo > 0;
+	bool bHasBulletsToReload = CurrentAmmo < WeaponConfig.MagSize && CurrentTotalAmmo > 0;
+	bool bStateOkToReload = CurrentState == EWeaponState::Idle || CurrentState == EWeaponState::Firing;
+	return bHasBulletsToReload && bStateOkToReload;
 }
 
 bool ASWeapon::CanFire()
@@ -225,4 +377,14 @@ void ASWeapon::PlaySounds(FVector ActorLocation)
 		UGameplayStatics::SpawnSoundAttached(
 			FireSound, MeshComp, WeaponMuzzleSocketName, FVector::ZeroVector, EAttachLocation::KeepRelativeOffset);
 	}
+}
+
+void ASWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME_CONDITION(ASWeapon, CurrentAmmo, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(ASWeapon, CurrentTotalAmmo, COND_OwnerOnly);
+
+	DOREPLIFETIME_CONDITION(ASWeapon, bIsReloading, COND_OwnerOnly);
 }

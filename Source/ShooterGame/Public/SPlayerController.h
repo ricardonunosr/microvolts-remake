@@ -12,6 +12,9 @@ class SHOOTERGAME_API ASPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 
+protected:
+	virtual void AcknowledgePossession(class APawn* P);
+
 public:
 	virtual void SetupInputComponent() override;
 

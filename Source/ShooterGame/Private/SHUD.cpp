@@ -2,12 +2,43 @@
 
 #include "SHUD.h"
 
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "SCharacter.h"
 #include "SPlayerController.h"
 
 #include <Blueprint/UserWidget.h>
 #include <GameFramework/PlayerController.h>
 #include <Kismet/GameplayStatics.h>
+
+void ASHUD::CreateMainHUD()
+{
+	if (MainHUDClass)
+	{
+		ASPlayerController* PC = Cast<ASPlayerController>(GetOwningPlayerController());
+
+		if (PC)
+		{
+			MainHUD = CreateWidget<UUserWidget>(PC, MainHUDClass);
+			MainHUD->AddToViewport();
+			UWidgetBlueprintLibrary::SetInputMode_GameOnly(PC);
+		}
+	}
+}
+
+void ASHUD::RemoveMainHUD()
+{
+	MainHUD->RemoveFromParent();
+}
+
+void ASHUD::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+}
+
+void ASHUD::BeginPlay()
+{
+	Super::BeginPlay();
+}
 
 void ASHUD::SHOptionsMenu()
 {

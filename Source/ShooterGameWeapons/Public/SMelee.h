@@ -16,4 +16,6 @@ class SHOOTERGAMEWEAPONS_API ASMelee : public ASWeapon
 	GENERATED_BODY()
 protected:
 	virtual void Fire() override;
+
+	float Random;
 };

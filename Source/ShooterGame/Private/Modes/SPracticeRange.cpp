@@ -9,10 +9,10 @@
 
 ASPracticeRange::ASPracticeRange()
 {
-	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnOb(TEXT("/Game/Blueprints/BP_PlayerCharacter"));
+	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnOb(TEXT("/Game/ShooterGame/Blueprints/Pawns/BP_PlayerCharacter"));
 	DefaultPawnClass = PlayerPawnOb.Class;
 
-	static ConstructorHelpers::FClassFinder<AHUD> HUDOb(TEXT("/Game/Blueprints/BP_HUD"));
+	static ConstructorHelpers::FClassFinder<AHUD> HUDOb(TEXT("/Game/ShooterGame/Blueprints/BP_HUD"));
 	HUDClass = HUDOb.Class;
 
 	PrimaryActorTick.bCanEverTick = true;

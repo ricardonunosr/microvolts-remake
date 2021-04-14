@@ -19,6 +19,21 @@ public:
 	USAnimInstance();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
+	float Speed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
+	float Direction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
+	bool bIsCrouching;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
+	bool bIsJumping;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
+	int32 JumpCurrentCount;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
 	FRotator HeadRotation;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
@@ -29,4 +44,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
 	float AimPitch;
+
+	UFUNCTION(BlueprintCallable, Category = Functions)
+	void UpdateAnimationProperties();
 };

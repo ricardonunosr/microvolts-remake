@@ -3,12 +3,14 @@
 #include "SCharacter.h"
 
 #include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/SHealthComponent.h"
 #include "DrawDebugHelpers.h"
 #include "GameFramework/PawnMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Net/UnrealNetwork.h"
 #include "ShooterGameWeapons/Public/Abstract/SWeapon.h"
 
 #include <GameFramework/CharacterMovementComponent.h>
@@ -18,6 +20,14 @@
 // Sets default values
 ASCharacter::ASCharacter()
 {
+	class USkeletalMeshComponent* MeshComp = GetMesh();
+
+	MeshComp->SetCollisionObjectType(ECC_Pawn);
+	MeshComp->SetCollisionResponseToAllChannels(ECR_Ignore);
+	MeshComp->SetCollisionResponseToChannel(COLLISION_WEAPON, ECR_Block);
+	MeshComp->SetCollisionResponseToChannel(COLLISION_PROJECTILE, ECR_Block);
+	MeshComp->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+
 	SpringComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringComp"));
 	SpringComp->bUsePawnControlRotation = true;
 	SpringComp->SetupAttachment(RootComponent);
@@ -35,6 +45,15 @@ ASCharacter::ASCharacter()
 	RifleZoomedFOV = 60;
 	SniperZoomedFOV = 20;
 	ZoomInterSpeed = 20.0f;
+
+	bIsDead = false;
+}
+
+void ASCharacter::Destroyed()
+{
+	Super::Destroyed();
+
+	DestroyLoadout();
 }
 
 // Called when the game starts or when spawned
@@ -44,14 +63,17 @@ void ASCharacter::BeginPlay()
 
 	DefaultFOV = CameraComp->FieldOfView;
 	DefaultWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
+	HealthComp->OnHealthChanged.AddDynamic(this, &ASCharacter::OnHealthChanged);
 }
 
 void ASCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	SpawnLoadout();
-	StartEquip(0, EWeaponType::E_Melee);
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		SpawnLoadout();
+	}
 }
 
 void ASCharacter::MoveForward(float Value)
@@ -203,7 +225,7 @@ void ASCharacter::StartSecondaryFire()
 {
 	if (CurrentWeapon)
 	{
-		EWeaponState::Type CurrentState = CurrentWeapon->GetCurrentState();
+		EWeaponState CurrentState = CurrentWeapon->GetCurrentState();
 		if (CurrentWeapon->WeaponType == EWeaponType::E_Sniper && CurrentState == EWeaponState::Idle)
 		{
 			CurrentWeapon->StartSecondaryFire();
@@ -217,18 +239,12 @@ void ASCharacter::StartSecondaryFire()
 	}
 }
 
-void ASCharacter::StopSecondaryFire()
+void ASCharacter::StopSecondaryFire(bool IsActive)
 {
-	CameraComp->SetFieldOfView(DefaultFOV);
-	GetCharacterMovement()->MaxWalkSpeed = DefaultWalkSpeed;
-}
-
-void ASCharacter::UpdateWeaponAnimation(EWeaponType CurrentWeaponType)
-{
-	USAnimInstance* AnimationBP = Cast<USAnimInstance>(GetMesh()->GetAnimInstance());
-	if (AnimationBP)
+	if (!IsActive)
 	{
-		AnimationBP->CurrentWeaponType = CurrentWeaponType;
+		CameraComp->SetFieldOfView(DefaultFOV);
+		GetCharacterMovement()->MaxWalkSpeed = DefaultWalkSpeed;
 	}
 }
 
@@ -242,10 +258,27 @@ void ASCharacter::ResetWeapons()
 
 void ASCharacter::StartReload()
 {
-	if (CurrentWeapon)
+	if (GetLocalRole() < ROLE_Authority)
 	{
-		CurrentWeapon->StartReload();
+		ServerStartReload();
 	}
+	else
+	{
+		if (CurrentWeapon)
+		{
+			CurrentWeapon->StartReload();
+		}
+	}
+}
+
+void ASCharacter::ServerStartReload_Implementation()
+{
+	StartReload();
+}
+
+bool ASCharacter::ServerStartReload_Validate()
+{
+	return true;
 }
 
 void ASCharacter::StopReload()
@@ -253,6 +286,23 @@ void ASCharacter::StopReload()
 	if (CurrentWeapon)
 	{
 		CurrentWeapon->StopReload();
+	}
+}
+
+void ASCharacter::OnHealthChanged(USHealthComponent* OwningHealthComp, float Health, float HealthDelta,
+	const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser)
+{
+	if (Health <= 0.0f && !bIsDead)
+	{
+		bIsDead = true;
+
+		OnDeath.Broadcast();
+
+		GetMovementComponent()->StopMovementImmediately();
+
+		DetachFromControllerPendingDestroy();
+
+		Destroy();
 	}
 }
 
@@ -299,6 +349,30 @@ void ASCharacter::SpawnLoadout()
 			AddWeapon(WeaponSpawn);
 		}
 	}
+
+	if (Loadout.Num() > 0)
+	{
+		StartEquip(Loadout[0]);
+	}
+}
+
+void ASCharacter::DestroyLoadout()
+{
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		return;
+	}
+
+	// remove all weapons from inventory and destroy them
+	for (int32 i = Loadout.Num() - 1; i >= 0; i--)
+	{
+		ASWeapon* Weapon = Loadout[i];
+		if (Weapon)
+		{
+			RemoveWeapon(Weapon);
+			Weapon->Destroy();
+		}
+	}
 }
 
 void ASCharacter::AddWeapon(ASWeapon* NewWeapon)
@@ -306,26 +380,41 @@ void ASCharacter::AddWeapon(ASWeapon* NewWeapon)
 	Loadout.AddUnique(NewWeapon);
 }
 
-void ASCharacter::StartEquip(int32 LoadoutIndex, EWeaponType WeaponType)
+void ASCharacter::RemoveWeapon(ASWeapon* Weapon)
 {
-	WeaponType == EWeaponType::E_Melee ? JumpMaxCount = 2 : JumpMaxCount = 1;
-	UpdateWeaponAnimation(WeaponType);
-	Equip(Loadout[LoadoutIndex]);
-	OnEquip.Broadcast(Loadout[LoadoutIndex]);
+	if (Weapon && GetLocalRole() == ROLE_Authority)
+	{
+		Loadout.RemoveSingle(Weapon);
+	}
+}
+
+void ASCharacter::StartEquip(ASWeapon* EquipWeapon)
+{
+	OnEquip.Broadcast(EquipWeapon);
+	EquipWeapon->WeaponType == EWeaponType::E_Melee ? JumpMaxCount = 2 : JumpMaxCount = 1;
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		Equip(EquipWeapon);
+	}
+	else
+	{
+		ServerStartEquipWeapon(EquipWeapon);
+	}
 }
 
 void ASCharacter::Equip(ASWeapon* EquipWeapon)
 {
 	if (CurrentWeapon)
 	{
+		ASWeapon* LocalLastCurrent = CurrentWeapon;
+
 		if (EquipWeapon != CurrentWeapon)
 		{
 			CurrentWeapon->SetActorHiddenInGame(true);
-			CurrentWeapon->StartReload();
+			LocalLastCurrent->OnUnEquip();
 		}
 
-		EquipWeapon->OnUnEquip();
-		EquipWeapon->StopReload();
+		EquipWeapon->OnEquip();
 		CurrentWeapon = EquipWeapon;
 		CurrentWeapon->SetActorHiddenInGame(false);
 	}
@@ -334,6 +423,16 @@ void ASCharacter::Equip(ASWeapon* EquipWeapon)
 		CurrentWeapon = EquipWeapon;
 		CurrentWeapon->SetActorHiddenInGame(false);
 	}
+}
+
+void ASCharacter::ServerStartEquipWeapon_Implementation(ASWeapon* EquipWeapon)
+{
+	StartEquip(EquipWeapon);
+}
+
+bool ASCharacter::ServerStartEquipWeapon_Validate(ASWeapon* EquipWeapon)
+{
+	return true;
 }
 
 // Called to bind functionality to input
@@ -352,20 +451,15 @@ void ASCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ASCharacter::BeginCrouch);
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &ASCharacter::EndCrouch);
 
+	PlayerInputComponent->BindAction<FEquipActionDelegate>("EquipMelee", IE_Pressed, this, &ASCharacter::StartEquip, Loadout[0]);
+	PlayerInputComponent->BindAction<FEquipActionDelegate>("EquipRifle", IE_Pressed, this, &ASCharacter::StartEquip, Loadout[1]);
+	PlayerInputComponent->BindAction<FEquipActionDelegate>("EquipShotgun", IE_Pressed, this, &ASCharacter::StartEquip, Loadout[2]);
+	PlayerInputComponent->BindAction<FEquipActionDelegate>("EquipSniper", IE_Pressed, this, &ASCharacter::StartEquip, Loadout[3]);
+	PlayerInputComponent->BindAction<FEquipActionDelegate>("EquipGatling", IE_Pressed, this, &ASCharacter::StartEquip, Loadout[4]);
 	PlayerInputComponent->BindAction<FEquipActionDelegate>(
-		"EquipMelee", IE_Pressed, this, &ASCharacter::StartEquip, 0, EWeaponType::E_Melee);
+		"EquipRocketLauncher", IE_Pressed, this, &ASCharacter::StartEquip, Loadout[5]);
 	PlayerInputComponent->BindAction<FEquipActionDelegate>(
-		"EquipRifle", IE_Pressed, this, &ASCharacter::StartEquip, 1, EWeaponType::E_Rifle);
-	PlayerInputComponent->BindAction<FEquipActionDelegate>(
-		"EquipShotgun", IE_Pressed, this, &ASCharacter::StartEquip, 2, EWeaponType::E_Shotgun);
-	PlayerInputComponent->BindAction<FEquipActionDelegate>(
-		"EquipSniper", IE_Pressed, this, &ASCharacter::StartEquip, 3, EWeaponType::E_Sniper);
-	PlayerInputComponent->BindAction<FEquipActionDelegate>(
-		"EquipGatling", IE_Pressed, this, &ASCharacter::StartEquip, 4, EWeaponType::E_Gatling);
-	PlayerInputComponent->BindAction<FEquipActionDelegate>(
-		"EquipRocketLauncher", IE_Pressed, this, &ASCharacter::StartEquip, 5, EWeaponType::E_RocketLauncher);
-	PlayerInputComponent->BindAction<FEquipActionDelegate>(
-		"EquipGrenadeLauncher", IE_Pressed, this, &ASCharacter::StartEquip, 6, EWeaponType::E_GrenadeLauncher);
+		"EquipGrenadeLauncher", IE_Pressed, this, &ASCharacter::StartEquip, Loadout[6]);
 
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ASCharacter::StartFire);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &ASCharacter::StopFire);
@@ -385,6 +479,26 @@ FVector ASCharacter::GetPawnViewLocation() const
 	return Super::GetPawnViewLocation();
 }
 
+ASWeapon* ASCharacter::GetCurrentWeapon() const
+{
+	return CurrentWeapon;
+}
+
+TArray<ASWeapon*> ASCharacter::GetLoadout() const
+{
+	return Loadout;
+}
+
+bool ASCharacter::GetPawnDied() const
+{
+	return bIsDead;
+}
+
+void ASCharacter::SetPawnDefaults()
+{
+	bIsDead = false;
+}
+
 void ASCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -393,4 +507,13 @@ void ASCharacter::Tick(float DeltaTime)
 	// UpdateRifleRotation();
 
 	UpdateZoom(DeltaTime);
+}
+
+void ASCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ASCharacter, Loadout);
+	DOREPLIFETIME(ASCharacter, CurrentWeapon);
+	DOREPLIFETIME(ASCharacter, bIsDead);
 }

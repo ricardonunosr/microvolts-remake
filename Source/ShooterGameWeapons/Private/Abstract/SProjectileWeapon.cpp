@@ -4,6 +4,14 @@
 
 void ASProjectileWeapon::Fire()
 {
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		ServerFireProjectile();
+	}
+}
+
+void ASProjectileWeapon::ServerFireProjectile_Implementation()
+{
 	AActor* MyOwner = GetOwner();
 	if (MyOwner && ProjectileClass)
 	{
@@ -18,4 +26,9 @@ void ASProjectileWeapon::Fire()
 
 		GetWorld()->SpawnActor<AActor>(ProjectileClass, MuzzleLocation, EyeRotation, SpawnParams);
 	}
+}
+
+bool ASProjectileWeapon::ServerFireProjectile_Validate()
+{
+	return true;
 }

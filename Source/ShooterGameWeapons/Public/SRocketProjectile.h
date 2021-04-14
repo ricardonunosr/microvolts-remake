@@ -20,6 +20,8 @@ public:
 
 	virtual void BeginPlay() override;
 
+	void Tick(float DeltaTime) override;
+
 	virtual void Explode() override;
 
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp, bool bSelfMoved,
@@ -31,6 +33,15 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = Effects)
 	FName RocketTailSocket;
+
+	UPROPERTY(EditDefaultsOnly, Category = Config)
+	float ProjectileSpeed;
+
+	UPROPERTY(EditDefaultsOnly, Category = Config)
+	float SelfDestructDistance;
+
+	UPROPERTY(VisibleAnywhere, Category = Config)
+	float DistanceTraveled;
 
 	void PlayFireEffects();
 };

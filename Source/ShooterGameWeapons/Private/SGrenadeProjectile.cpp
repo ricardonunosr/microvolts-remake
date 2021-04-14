@@ -14,6 +14,8 @@ ASGrenadeProjectile::ASGrenadeProjectile()
 	ProjetileMovementComp->MaxSpeed = 2000.0f;
 
 	ProjetileMovementComp->bShouldBounce = true;
+
+	bReplicates = true;
 }
 
 void ASGrenadeProjectile::BeginPlay()

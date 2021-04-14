@@ -5,21 +5,41 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Log.h"
+#include "PhysicsEngine/RadialForceComponent.h"
 
 ASRocketProjectile::ASRocketProjectile()
 {
+	PrimaryActorTick.bCanEverTick = true;
+
 	MeshComp->SetNotifyRigidBodyCollision(true);
 	MeshComp->SetSimulatePhysics(true);
 	MeshComp->SetEnableGravity(false);
 
-	ProjetileMovementComp->InitialSpeed = 2000.0f;
-	ProjetileMovementComp->MaxSpeed = 2000.0f;
+	ProjectileSpeed = 2000.0f;
+
+	ProjetileMovementComp->InitialSpeed = ProjectileSpeed;
+	ProjetileMovementComp->MaxSpeed = ProjectileSpeed;
+
+	bReplicates = true;
 }
 
 void ASRocketProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 	PlayFireEffects();
+}
+
+void ASRocketProjectile::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	float OffsetTraveled = ProjectileSpeed * DeltaTime;
+	DistanceTraveled += OffsetTraveled;
+	if (DistanceTraveled > SelfDestructDistance)
+	{
+		Explode();
+	}
 }
 
 void ASRocketProjectile::Explode()
@@ -29,6 +49,7 @@ void ASRocketProjectile::Explode()
 	TArray<AActor*> IgnoreActors;
 
 	PlayExplosionEffects();
+	RadialForceComp->FireImpulse();
 	UGameplayStatics::ApplyRadialDamage(
 		GetWorld(), ExplosionDamage, ActorLocation, DamageRadius, nullptr, IgnoreActors, this, InstigatorController, true);
 

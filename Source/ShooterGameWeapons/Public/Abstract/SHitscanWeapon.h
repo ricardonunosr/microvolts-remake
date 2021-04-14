@@ -7,6 +7,19 @@
 
 #include "SHitscanWeapon.generated.h"
 
+USTRUCT()
+struct FHitScanTrace
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY()
+	TEnumAsByte<EPhysicalSurface> SurfaceType;
+
+	UPROPERTY()
+	FVector_NetQuantize TraceTo;
+};
+
 USTRUCT(BlueprintType)
 struct FHitscanConfig
 {
@@ -28,6 +41,12 @@ class SHOOTERGAMEWEAPONS_API ASHitscanWeapon : public ASWeapon
 
 protected:
 	virtual void Fire() override;
+
+	UPROPERTY(ReplicatedUsing = OnRep_HitScanTrace)
+	FHitScanTrace HitScanTrace;
+
+	UFUNCTION()
+	void OnRep_HitScanTrace();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	FHitscanConfig HitScanConfig;

@@ -4,6 +4,23 @@
 
 #include "SHUD.h"
 
+void ASPlayerController::AcknowledgePossession(class APawn* P)
+{
+	Super::AcknowledgePossession(P);
+
+	ASHUD* HUD = GetHUD<ASHUD>();
+
+	if (HUD->MainHUD == nullptr)
+	{
+		HUD->CreateMainHUD();
+	}
+	else
+	{
+		HUD->RemoveMainHUD();
+		HUD->CreateMainHUD();
+	}
+}
+
 void ASPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();

@@ -2,27 +2,44 @@
 
 #include "Components/SHealthComponent.h"
 
+#include "Net/UnrealNetwork.h"
+
+#include <Modes/SFreeForAll.h>
+
 USHealthComponent::USHealthComponent()
 {
 	DefaultHealth = 100;
 	CurrentHealth = DefaultHealth;
+	bIsDead = false;
+
+	SetIsReplicatedByDefault(true);
 }
 
 void USHealthComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	AActor* MyOwner = GetOwner();
-	if (MyOwner)
+	if (GetOwnerRole() == ROLE_Authority)
 	{
-		MyOwner->OnTakeAnyDamage.AddDynamic(this, &USHealthComponent::HandleTakeAnyDamage);
+		AActor* MyOwner = GetOwner();
+		if (MyOwner)
+		{
+			MyOwner->OnTakeAnyDamage.AddDynamic(this, &USHealthComponent::HandleTakeAnyDamage);
+		}
 	}
+}
+
+void USHealthComponent::OnRep_Health(float OldHealth)
+{
+	float Damage = CurrentHealth - OldHealth;
+
+	OnHealthChanged.Broadcast(this, CurrentHealth, Damage, nullptr, nullptr, nullptr);
 }
 
 void USHealthComponent::HandleTakeAnyDamage(
 	AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser)
 {
-	if (Damage <= 0.0f)
+	if (Damage <= 0.0f && bIsDead)
 	{
 		return;
 	}
@@ -31,6 +48,17 @@ void USHealthComponent::HandleTakeAnyDamage(
 
 	UE_LOG(LogTemp, Log, TEXT("Health Changed: %s"), *FString::SanitizeFloat(CurrentHealth));
 	OnHealthChanged.Broadcast(this, CurrentHealth, Damage, nullptr, nullptr, nullptr);
+
+	bIsDead = CurrentHealth <= 0.0f;
+
+	if (bIsDead)
+	{
+		ASFreeForAll* GM = Cast<ASFreeForAll>(GetWorld()->GetAuthGameMode());
+		if (GM)
+		{
+			GM->OnActorKilled.Broadcast(GetOwner(), DamageCauser, InstigatedBy);
+		}
+	}
 }
 
 void USHealthComponent::Heal(float HealAmount)
@@ -43,4 +71,12 @@ void USHealthComponent::Heal(float HealAmount)
 float USHealthComponent::GetHealth() const
 {
 	return CurrentHealth;
+}
+
+void USHealthComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(USHealthComponent, CurrentHealth);
+	DOREPLIFETIME(USHealthComponent, bIsDead);
 }

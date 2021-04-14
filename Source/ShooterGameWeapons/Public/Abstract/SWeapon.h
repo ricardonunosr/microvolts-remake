@@ -8,26 +8,16 @@
 
 #include "SWeapon.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFireSignature, ASWeapon*, OwningWeapon);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnReloadSignature, ASWeapon*, OwningWeapon);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSecondaryFireSignature);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnReloadedSignature, ASWeapon*, OwningWeapon);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSecondaryFireSignature, bool, bIsActive);
 
 class UDamageType;
 class UParticleSystem;
 class UTexture2D;
 class UNiagaraSystem;
 class USoundCue;
-
-namespace EWeaponState
-{
-enum Type
-{
-	Idle,
-	Firing,
-	Reloading,
-	Equipping,
-	SecondaryFiring,
-};
-}
 
 USTRUCT(BlueprintType)
 struct FWeaponConfig
@@ -54,9 +44,6 @@ struct FWeaponConfig
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = WeaponStat)
 	float ReloadTime;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = WeaponStat)
-	bool bHasAutomaticFiring;
-
 	FWeaponConfig()
 	{
 		TotalAmmo = 80;
@@ -66,11 +53,10 @@ struct FWeaponConfig
 		SpreadIncrement = 0.1f;
 		TimeBetweenShots = 0.2f;
 		ReloadTime = 1;
-		bHasAutomaticFiring = false;
 	}
 };
 
-UCLASS()
+UCLASS(Abstract, Blueprintable)
 class SHOOTERGAMEWEAPONS_API ASWeapon : public AActor
 {
 	GENERATED_BODY()
@@ -87,7 +73,13 @@ public:
 
 	virtual void StartFire();
 
+	UFUNCTION(Reliable, Server, WithValidation)
+	void ServerStartFire();
+
 	virtual void StopFire();
+
+	UFUNCTION(Reliable, Server, WithValidation)
+	void ServerStopFire();
 
 	virtual void OnBurstStarted();
 
@@ -95,17 +87,25 @@ public:
 
 	virtual void HandleFiring();
 
+	virtual void HandleSecondFiring(bool bWasActive);
+
 	virtual void StartSecondaryFire();
 
 	virtual void StopSecondaryFire();
 
-	virtual void StartReload();
+	virtual void StartReload(bool bFromReplication = false);
+
+	UFUNCTION(Reliable, Server, WithValidation)
+	void ServerStartReload();
 
 	virtual void StopReload();
 
+	UFUNCTION(Reliable, Server, WithValidation)
+	void ServerStopReload();
+
 	virtual void ResetWeapon();
 
-	EWeaponState::Type GetCurrentState();
+	EWeaponState GetCurrentState();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
 	FName WeaponMuzzleSocketName;
@@ -118,7 +118,13 @@ public:
 
 	// Events
 	UPROPERTY(BlueprintAssignable, Category = "Events")
-	FOnReloadSignature OnReload;
+	FOnFireSignature OnFire;
+
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnReloadSignature OnStartReload;
+
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnReloadSignature OnStopReload;
 
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnSecondaryFireSignature OnSecondaryFire;
@@ -127,16 +133,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Components")
 	UStaticMeshComponent* MeshComp;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	FName Name;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	TSubclassOf<UDamageType> DamageType;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Weapon")
+	UPROPERTY(Transient, Replicated, BlueprintReadOnly, Category = "Weapon")
 	int32 CurrentTotalAmmo;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Weapon")
+	UPROPERTY(Transient, Replicated, BlueprintReadOnly, Category = "Weapon")
 	int32 CurrentAmmo;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Effects)
@@ -157,13 +163,19 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Config)
 	FWeaponConfig WeaponConfig;
 
-	EWeaponState::Type CurrentState;
+	EWeaponState CurrentState;
 
 	float CurrentSpread;
 
+	bool bWantsToFire;
+
 	bool bIsRefering;
 
+	UPROPERTY(Transient, ReplicatedUsing = OnRepReload, BlueprintReadOnly)
 	bool bIsReloading;
+
+	UFUNCTION()
+	void OnRepReload();
 
 	bool bIsSecundaryFireActive;
 
@@ -176,13 +188,17 @@ protected:
 
 	FTimerHandle TimerHandle_ReloadTime;
 
+	FTimerHandle TimerHandle_StopReload;
+
 	virtual void Fire() PURE_VIRTUAL(ASWeapon::Fire, );
 
 	virtual void SecondaryFire();
 
+	void DetermineWeaponState();
+
 	void WeaponTrace();
 
-	void SetWeaponState(EWeaponState::Type NewState);
+	void SetWeaponState(EWeaponState NewState);
 
 	bool CanReload();
 

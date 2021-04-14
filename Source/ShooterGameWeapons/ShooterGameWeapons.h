@@ -5,6 +5,10 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleManager.h"
 
+#define COLLISION_WEAPON ECC_GameTraceChannel1
+#define COLLISION_PROJECTILE ECC_GameTraceChannel2
+#define COLLISION_PICKUP ECC_GameTraceChannel3
+
 class FShooterGameWeapons : public IModuleInterface
 {
 public:
@@ -23,4 +27,14 @@ enum class EWeaponType : uint8
 	E_Gatling UMETA(DisplayName = "Gatling"),
 	E_RocketLauncher UMETA(DisplayName = "RocketLauncher"),
 	E_GrenadeLauncher UMETA(DisplayName = "GrenadeLauncher"),
+};
+
+UENUM(BlueprintType)
+enum class EWeaponState : uint8
+{
+	Idle,
+	Firing,
+	Reloading,
+	Equipping,
+	SecondaryFiring,
 };

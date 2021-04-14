@@ -23,6 +23,5 @@ ASProjectile::ASProjectile()
 
 void ASProjectile::PlayExplosionEffects()
 {
-	RadialForceComp->FireImpulse();
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionEffect, GetActorLocation(), GetActorRotation());
 }
