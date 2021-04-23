@@ -10,6 +10,11 @@
 #include <GameFramework/PlayerController.h>
 #include <Kismet/GameplayStatics.h>
 
+ASHUD::ASHUD()
+{
+	// CreateMainHUD();
+}
+
 void ASHUD::CreateMainHUD()
 {
 	if (MainHUDClass)
@@ -19,15 +24,13 @@ void ASHUD::CreateMainHUD()
 		if (PC)
 		{
 			MainHUD = CreateWidget<UUserWidget>(PC, MainHUDClass);
-			MainHUD->AddToViewport();
-			UWidgetBlueprintLibrary::SetInputMode_GameOnly(PC);
 		}
 	}
 }
 
 void ASHUD::RemoveMainHUD()
 {
-	MainHUD->RemoveFromParent();
+	MainHUD->RemoveFromViewport();
 }
 
 void ASHUD::Tick(float DeltaTime)

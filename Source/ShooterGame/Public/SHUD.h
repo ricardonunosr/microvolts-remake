@@ -29,6 +29,8 @@ protected:
 	TSubclassOf<UUserWidget> OptionsMenuClass;
 
 public:
+	ASHUD();
+
 	UPROPERTY(BlueprintReadOnly)
 	class UUserWidget* MainHUD;
 

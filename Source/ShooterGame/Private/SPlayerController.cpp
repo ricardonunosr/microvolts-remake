@@ -2,23 +2,13 @@
 
 #include "SPlayerController.h"
 
+#include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "SHUD.h"
 
-void ASPlayerController::AcknowledgePossession(class APawn* P)
+void ASPlayerController::BeginPlay()
 {
-	Super::AcknowledgePossession(P);
-
-	ASHUD* HUD = GetHUD<ASHUD>();
-
-	if (HUD->MainHUD == nullptr)
-	{
-		HUD->CreateMainHUD();
-	}
-	else
-	{
-		HUD->RemoveMainHUD();
-		HUD->CreateMainHUD();
-	}
+	Super::BeginPlay();
 }
 
 void ASPlayerController::SetupInputComponent()
@@ -26,6 +16,7 @@ void ASPlayerController::SetupInputComponent()
 	Super::SetupInputComponent();
 
 	InputComponent->BindAction("OptionsMenu", IE_Pressed, this, &ASPlayerController::HandleOptionsMenu);
+	InputComponent->BindAction("Fire", IE_Pressed, this, &ASPlayerController::PressedFire);
 }
 
 void ASPlayerController::HandleOptionsMenu()
@@ -36,4 +27,18 @@ void ASPlayerController::HandleOptionsMenu()
 	{
 		HUD->SHOptionsMenu();
 	}
+}
+
+void ASPlayerController::StartFire(uint8 FireModeNum)
+{
+	Super::StartFire(FireModeNum);
+}
+
+void ASPlayerController::PressedFire()
+{
+	StartFire(0);
+}
+
+void ASPlayerController::ReleasedFire()
+{
 }

@@ -2,6 +2,8 @@
 
 #include "SMelee.h"
 
+#include "Net/UnrealNetwork.h"
+
 void ASMelee::Fire()
 {
 }

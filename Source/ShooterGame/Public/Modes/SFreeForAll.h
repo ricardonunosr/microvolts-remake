@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/GameModeBase.h"
+#include "GameFramework/GameMode.h"
 
 #include "SFreeForAll.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(
 	FOnActorKilled, AActor*, VictimActor, AActor*, KillerActor, AController*, KillerController);
 
-UCLASS() class SHOOTERGAME_API ASFreeForAll : public AGameModeBase
+UCLASS() class SHOOTERGAME_API ASFreeForAll : public AGameMode
 {
 	GENERATED_BODY()
 

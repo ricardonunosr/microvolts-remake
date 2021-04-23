@@ -17,5 +17,12 @@ class SHOOTERGAMEWEAPONS_API ASMelee : public ASWeapon
 protected:
 	virtual void Fire() override;
 
-	float Random;
+	// UFUNCTION(Server, Reliable, WithValidation)
+	// void ServerTryToAttack();
+
+	// UFUNCTION(NetMulticast, Reliable, WithValidation)
+	// void MultiAttackMontage();
+
+	// UFUNCTION(Server, Reliable, WithValidation)
+	// void ServerMeleeAttackDamage();
 };

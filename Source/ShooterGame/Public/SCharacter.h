@@ -9,14 +9,11 @@
 
 #include "SCharacter.generated.h"
 
-DECLARE_DELEGATE_OneParam(FEquipActionDelegate, ASWeapon*);
+DECLARE_DELEGATE_OneParam(FEquipActionDelegate, int32);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEquipSignature, ASWeapon*, CurrentWeapon);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeathSignature);
 
-class USpringArmComponent;
-class UCameraComponent;
 class ASWeapon;
-class USHealthComponent;
 
 UCLASS()
 class SHOOTERGAME_API ASCharacter : public ACharacter
@@ -24,25 +21,22 @@ class SHOOTERGAME_API ASCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	ASCharacter();
 
-	void Destroyed() override;
-
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	virtual void PostInitializeComponents() override;
+	UPROPERTY(EditDefaultsOnly, Category = "Components")
+	class USpringArmComponent* SpringComp;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Components")
-	USpringArmComponent* SpringComp;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Components")
-	UCameraComponent* CameraComp;
+	class UCameraComponent* CameraComp;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
-	USHealthComponent* HealthComp;
+	class USHealthComponent* HealthComp;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
+	class USLoadoutComponent* LoadoutComp;
 
 	void MoveForward(float Value);
 
@@ -54,43 +48,12 @@ protected:
 
 	void EndCrouch();
 
-	void UpdateHeadRotation();
-
-	void UpdateRifleRotation();
-
-	float DesiredYawRotation;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Character", meta = (ClampMin = 0, ClampMax = 90))
-	float YawRightLimit;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Character", meta = (ClampMin = -90, ClampMax = 0))
-	float YawLeftLimit;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character")
-	TArray<TSubclassOf<ASWeapon>> DefaultLoadoutClasses;
-
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Character")
-	TArray<ASWeapon*> Loadout;
-
-	UPROPERTY(Transient, Replicated, BlueprintReadOnly, Category = "Character")
-	ASWeapon* CurrentWeapon;
-
 	float DefaultWalkSpeed;
 
-	void SpawnLoadout();
-
-	void DestroyLoadout();
-
-	void AddWeapon(ASWeapon* NewWeapon);
-
-	void RemoveWeapon(ASWeapon* Weapon);
-
-	void StartEquip(ASWeapon* EquipWeapon);
+	void StartEquip(int32 LoadoutNumber);
 
 	UFUNCTION(Reliable, server, WithValidation)
-	void ServerStartEquipWeapon(ASWeapon* EquipWeapon);
-
-	void Equip(ASWeapon* EquipWeapon);
+	void ServerStartEquipWeapon(int32 LoadoutNumber);
 
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnEquipSignature OnEquip;
@@ -120,6 +83,9 @@ protected:
 	bool bWantsToZoom;
 
 	UPROPERTY(Replicated)
+	bool bIsAttacking;
+
+	UPROPERTY(Replicated)
 	bool bIsDead;
 
 	UFUNCTION()
@@ -147,18 +113,19 @@ protected:
 	FName WeaponAttachSocketName;
 
 public:
+	virtual void Destroyed() override;
+
 	void Tick(float DeltaTime) override;
 
-	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	virtual FVector GetPawnViewLocation() const override;
 
-	ASWeapon* GetCurrentWeapon() const;
+	UFUNCTION(BlueprintCallable)
+	TArray<class ASWeapon*> GetLoadout();
 
-	TArray<ASWeapon*> GetLoadout() const;
+	UFUNCTION(BlueprintCallable)
+	class ASWeapon* GetCurrentWeapon();
 
 	bool GetPawnDied() const;
-
-	void SetPawnDefaults();
 };

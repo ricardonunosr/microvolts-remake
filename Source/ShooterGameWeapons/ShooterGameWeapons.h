@@ -38,3 +38,10 @@ enum class EWeaponState : uint8
 	Equipping,
 	SecondaryFiring,
 };
+
+UENUM(BlueprintType)
+enum class EWeaponFireMode : uint8
+{
+	Primary,
+	Secondary,
+};

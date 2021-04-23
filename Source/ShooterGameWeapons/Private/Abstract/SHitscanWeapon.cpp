@@ -67,7 +67,6 @@ void ASHitscanWeapon::Fire()
 
 void ASHitscanWeapon::OnRep_HitScanTrace()
 {
-	UE_LOG(LogTemp, Log, TEXT("hELLO"));
 	PlayFireEffects(HitScanTrace.TraceTo);
 	PlayImpactEffects(HitScanTrace.SurfaceType, HitScanTrace.TraceTo);
 }
