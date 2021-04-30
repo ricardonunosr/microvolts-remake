@@ -37,9 +37,6 @@ protected:
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnLoadoutSpawnSignature OnLoadoutSpawn;
 
-	UPROPERTY(BlueprintAssignable, Category = Events)
-	FOnCurrentWeaponChangedSignature OnCurrentWeaponChanged;
-
 	void SpawnLoadout();
 
 	void DestroyLoadout();
@@ -56,4 +53,7 @@ public:
 	ASWeapon* GetCurrentWeapon() const;
 
 	TArray<ASWeapon*> GetLoadout() const;
+
+	UPROPERTY(BlueprintAssignable, Category = Events)
+	FOnCurrentWeaponChangedSignature OnCurrentWeaponChanged;
 };

@@ -66,7 +66,6 @@ void ASWeapon::OnUnEquip()
 	}
 
 	LastFireTime = 0;
-	StopSecondaryFire();
 }
 
 void ASWeapon::StartFire()
@@ -168,29 +167,9 @@ void ASWeapon::HandleFiring()
 	LastFireTime = GetWorld()->GetTimeSeconds();
 }
 
-void ASWeapon::HandleSecondFiring(bool bWasActive)
-{
-	if (bIsSecundaryFireActive == bWasActive)
-	{
-		StopSecondaryFire();
-		SecondaryFire();
-	}
-	else
-	{
-		SecondaryFire();
-	}
-}
-
 void ASWeapon::StartSecondaryFire()
 {
-	bool bWasActive = bIsSecundaryFireActive;
-	bIsSecundaryFireActive = true;
-	HandleSecondFiring(bWasActive);
-}
-
-void ASWeapon::StopSecondaryFire()
-{
-	bIsSecundaryFireActive = false;
+	SecondaryFire();
 }
 
 void ASWeapon::StartReload(bool bFromReplication)
@@ -283,11 +262,6 @@ void ASWeapon::OnRepReload()
 	{
 		StopReload();
 	}
-}
-
-void ASWeapon::SecondaryFire()
-{
-	OnSecondaryFire.Broadcast(bIsSecundaryFireActive);
 }
 
 void ASWeapon::DetermineWeaponState()

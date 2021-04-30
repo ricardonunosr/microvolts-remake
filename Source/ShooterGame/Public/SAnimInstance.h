@@ -39,11 +39,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
 	EWeaponType CurrentWeaponType;
 
+	float DesiredYawRotation;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
 	float AimYaw;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
 	float AimPitch;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
+	bool bIsFalling;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
+	bool bIsDead;
 
 	UFUNCTION(BlueprintCallable, Category = Functions)
 	void UpdateAnimationProperties();

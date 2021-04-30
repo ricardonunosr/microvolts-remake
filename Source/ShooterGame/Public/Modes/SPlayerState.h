@@ -7,6 +7,9 @@
 
 #include "SPlayerState.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPlayerScoreKill, ASPlayerState*, PlayerState, int32, NewScoreKill);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPlayerScoreDeath, ASPlayerState*, PlayerState, int32, NewScoreDeath);
+
 /**
  *
  */
@@ -18,23 +21,32 @@ class SHOOTERGAME_API ASPlayerState : public APlayerState
 public:
 	ASPlayerState();
 
-	void ScoreKill(ASPlayerState* Victim);
+	void ScoreKill(AActor* Victim);
 
-	void ScoreDeath(ASPlayerState* KilledBy);
+	void ScoreDeath(AActor* KilledBy);
 
+	UFUNCTION(BlueprintCallable)
 	int32 GetKills() const;
 
+	UFUNCTION(BlueprintCallable)
 	int32 GetDeaths() const;
 
-	void SetMatchId(const FString& CurrentMatchId);
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnPlayerScoreKill OnPlayerScoreKill;
+
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnPlayerScoreDeath OnPlayerScoreDeath;
 
 protected:
-	UPROPERTY(Transient, Replicated)
+	UPROPERTY(Transient, ReplicatedUsing = OnRepKills)
 	int32 NumKills;
 
-	UPROPERTY(Transient, Replicated)
+	UPROPERTY(Transient, ReplicatedUsing = OnRepDeaths)
 	int32 NumDeaths;
 
-	UPROPERTY(Replicated)
-	FString MatchId;
+	UFUNCTION()
+	void OnRepKills();
+
+	UFUNCTION()
+	void OnRepDeaths();
 };

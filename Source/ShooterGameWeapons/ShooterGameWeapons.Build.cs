@@ -28,7 +28,7 @@ public class ShooterGameWeapons : ModuleRules
         PublicDependencyModuleNames.AddRange(
             new string[]
             {
-                "Core","Niagara","PhysicsCore"
+                "Core","Niagara","PhysicsCore","UMG"
             }
             );
 

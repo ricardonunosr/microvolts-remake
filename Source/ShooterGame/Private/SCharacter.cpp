@@ -11,6 +11,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Modes/SFreeForAll.h"
 #include "Net/UnrealNetwork.h"
 #include "ShooterGameWeapons/Public/Abstract/SWeapon.h"
 
@@ -42,7 +43,6 @@ ASCharacter::ASCharacter()
 	GetMovementComponent()->GetNavAgentPropertiesRef().bCanCrouch = true;
 
 	RifleZoomedFOV = 60;
-	SniperZoomedFOV = 20;
 	ZoomInterSpeed = 20.0f;
 
 	bIsDead = false;
@@ -102,26 +102,7 @@ void ASCharacter::StartSecondaryFire()
 {
 	if (LoadoutComp->GetCurrentWeapon())
 	{
-		EWeaponState CurrentState = LoadoutComp->GetCurrentWeapon()->GetCurrentState();
-		if (LoadoutComp->GetCurrentWeapon()->WeaponType == EWeaponType::E_Sniper && CurrentState == EWeaponState::Idle)
-		{
-			LoadoutComp->GetCurrentWeapon()->StartSecondaryFire();
-			CameraComp->SetFieldOfView(SniperZoomedFOV);
-			GetCharacterMovement()->MaxWalkSpeed = DefaultWalkSpeed * 0.5;
-		}
-		else
-		{
-			LoadoutComp->GetCurrentWeapon()->StartSecondaryFire();
-		}
-	}
-}
-
-void ASCharacter::StopSecondaryFire(bool IsActive)
-{
-	if (!IsActive)
-	{
-		CameraComp->SetFieldOfView(DefaultFOV);
-		GetCharacterMovement()->MaxWalkSpeed = DefaultWalkSpeed;
+		LoadoutComp->GetCurrentWeapon()->StartSecondaryFire();
 	}
 }
 
@@ -173,13 +154,15 @@ void ASCharacter::OnHealthChanged(USHealthComponent* OwningHealthComp, float Hea
 	{
 		bIsDead = true;
 
-		OnDeath.Broadcast();
+		OnDeath.Broadcast(this);
 
-		GetMovementComponent()->StopMovementImmediately();
+		ASFreeForAll* GameMode = GetWorld()->GetAuthGameMode<ASFreeForAll>();
 
-		DetachFromControllerPendingDestroy();
+		GameMode->RegisterKill(this, InstigatedBy->GetPawn(), DamageCauser);
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		DisableInput(PC);
 
-		SetLifeSpan(.2f);
+		SetLifeSpan(5.0f);
 	}
 }
 
@@ -211,7 +194,7 @@ void ASCharacter::StartEquip(int32 LoadoutNumber)
 {
 	ASWeapon* EquipWeapon = LoadoutComp->GetLoadout()[LoadoutNumber];
 
-	OnEquip.Broadcast(EquipWeapon);
+	LoadoutComp->OnCurrentWeaponChanged.Broadcast(LoadoutComp, EquipWeapon);
 
 	if (GetLocalRole() == ROLE_Authority)
 	{

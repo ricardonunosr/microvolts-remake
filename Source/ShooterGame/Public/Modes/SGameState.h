@@ -7,6 +7,8 @@
 
 #include "SGameState.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnActorKilled, AActor*, VictimActor, AActor*, KillerActor, AActor*, DamageCauser);
+
 /**
  *
  */
@@ -20,4 +22,10 @@ public:
 
 	UPROPERTY(Transient, Replicated)
 	int32 RemainingTime;
+
+	UFUNCTION(Unreliable, NetMulticast)
+	void MultiCastOnActorKilled(AActor* Victim, AActor* Killer, AActor* DamageCauser);
+
+	UPROPERTY(BlueprintAssignable, Category = "GameMode")
+	FOnActorKilled OnActorKilled;
 };

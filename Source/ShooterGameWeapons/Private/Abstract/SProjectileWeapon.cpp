@@ -2,12 +2,18 @@
 
 #include "Abstract/SProjectileWeapon.h"
 
+#include "Abstract/SProjectile.h"
+
 void ASProjectileWeapon::Fire()
 {
 	if (GetLocalRole() == ROLE_Authority)
 	{
 		ServerFireProjectile();
 	}
+}
+
+void ASProjectileWeapon::SecondaryFire()
+{
 }
 
 void ASProjectileWeapon::ServerFireProjectile_Implementation()
@@ -24,7 +30,13 @@ void ASProjectileWeapon::ServerFireProjectile_Implementation()
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-		GetWorld()->SpawnActor<AActor>(ProjectileClass, MuzzleLocation, EyeRotation, SpawnParams);
+		ASProjectile* Projectile = GetWorld()->SpawnActor<ASProjectile>(ProjectileClass, MuzzleLocation, EyeRotation, SpawnParams);
+		if (Projectile)
+		{
+			Projectile->SetOwner(this);
+		}
+
+		UseAmmo();
 	}
 }
 

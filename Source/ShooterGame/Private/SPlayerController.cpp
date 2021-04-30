@@ -6,39 +6,66 @@
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "SHUD.h"
 
-void ASPlayerController::BeginPlay()
+void ASPlayerController::TogglePauseMenu()
 {
-	Super::BeginPlay();
+	if (OptionsMenu && OptionsMenu->IsInViewport())
+	{
+		OptionsMenu->RemoveFromParent();
+		OptionsMenu = nullptr;
+
+		bShowMouseCursor = false;
+		SetInputMode(FInputModeGameOnly());
+		return;
+	}
+
+	OptionsMenu = CreateWidget<UUserWidget>(this, OptionsMenuClass);
+	if (OptionsMenu)
+	{
+		OptionsMenu->AddToViewport(100);
+
+		bShowMouseCursor = true;
+		DisableInput(this);
+		// SetInputMode(FInputModeUIOnly());
+	}
 }
 
 void ASPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	InputComponent->BindAction("OptionsMenu", IE_Pressed, this, &ASPlayerController::HandleOptionsMenu);
-	InputComponent->BindAction("Fire", IE_Pressed, this, &ASPlayerController::PressedFire);
+	InputComponent->BindAction("OptionsMenu", IE_Pressed, this, &ASPlayerController::TogglePauseMenu);
+	InputComponent->BindAction("Scoreboard", IE_Pressed, this, &ASPlayerController::ShowScoreboard);
+	InputComponent->BindAction("Scoreboard", IE_Released, this, &ASPlayerController::HideScoreboard);
 }
 
-void ASPlayerController::HandleOptionsMenu()
+void ASPlayerController::ShowScoreboard()
 {
-	ASHUD* HUD = GetHUD<ASHUD>();
-
-	if (HUD)
+	Scoreboard = CreateWidget<UUserWidget>(this, ScoreboardClass);
+	if (Scoreboard)
 	{
-		HUD->SHOptionsMenu();
+		Scoreboard->AddToViewport(100);
 	}
 }
 
-void ASPlayerController::StartFire(uint8 FireModeNum)
+void ASPlayerController::HideScoreboard()
 {
-	Super::StartFire(FireModeNum);
+	if (Scoreboard && Scoreboard->IsInViewport())
+	{
+		Scoreboard->RemoveFromParent();
+		Scoreboard = nullptr;
+		SetInputMode(FInputModeGameOnly());
+		return;
+	}
 }
 
-void ASPlayerController::PressedFire()
+void ASPlayerController::SetPawn(APawn* InPawn)
 {
-	StartFire(0);
+	Super::SetPawn(InPawn);
+
+	OnPawnChanged.Broadcast(InPawn);
 }
 
-void ASPlayerController::ReleasedFire()
+void ASPlayerController::BeginPlayingState()
 {
+	BlueprintBeginPlayingState();
 }

@@ -2,6 +2,7 @@
 
 #include "SSniper.h"
 
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 
@@ -36,7 +37,7 @@ void ASSniper::Fire()
 			const float ConeHalfAngle = FMath::DegreesToRadians(10.0f);
 			FVector ShootDir = WeaponRandomStream.VRandCone(ShotDirection, ConeHalfAngle, ConeHalfAngle);
 
-			if (bIsSecundaryFireActive)
+			if (bIsActivated)
 			{
 				ShootDir = ShotDirection;
 			}
@@ -57,9 +58,61 @@ void ASSniper::Fire()
 		}
 		UseAmmo();
 		PlaySounds(MyOwner->GetActorLocation());
-		if (bIsSecundaryFireActive)
+
+		if(bIsActivated)
 		{
-			SecondaryFire();
+			DeactivateScope();
 		}
+	}
+}
+
+void ASSniper::SecondaryFire()
+{
+	
+	if(!bIsActivated)
+	{
+		ActivateScope();
+	}
+
+	if(bIsActivated)
+	{
+		DeactivateScope();
+	}
+	
+	bIsActivated=!bIsActivated;
+}
+
+void ASSniper::OnUnEquip()
+{
+	Super::OnUnEquip();
+
+	if(bIsActivated)
+	{
+		DeactivateScope();
+		bIsActivated=false;
+	}
+}
+
+void ASSniper::ActivateScope()
+{
+	AActor* Pawn = GetOwner();
+	APlayerController* Controller = Cast<APlayerController>(Pawn->GetInstigatorController());
+
+	if (ScopeWidgetClass)
+	{
+		ScopeWidget = UWidgetBlueprintLibrary::Create(this, ScopeWidgetClass, Controller);
+		if (ScopeWidget)
+		{
+			ScopeWidget->AddToViewport(1);
+		}
+	}
+}
+
+void ASSniper::DeactivateScope()
+{
+	if (ScopeWidget)
+	{
+		ScopeWidget->RemoveFromParent();
+		ScopeWidget = NULL;
 	}
 }

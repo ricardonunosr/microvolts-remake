@@ -18,6 +18,8 @@ class SHOOTERGAMEWEAPONS_API ASProjectileWeapon : public ASWeapon
 protected:
 	virtual void Fire() override;
 
+	virtual void SecondaryFire() override;
+
 	UPROPERTY(EditDefaultsOnly, Category = Weapon)
 	TSubclassOf<AActor> ProjectileClass;
 

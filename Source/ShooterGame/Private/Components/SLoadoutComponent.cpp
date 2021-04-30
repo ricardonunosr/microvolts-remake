@@ -103,7 +103,6 @@ void USLoadoutComponent::Equip(ASWeapon* EquipWeapon)
 		CurrentWeapon = EquipWeapon;
 		CurrentWeapon->SetActorHiddenInGame(false);
 	}
-	OnCurrentWeaponChanged.Broadcast(this, CurrentWeapon);
 }
 
 ASWeapon* USLoadoutComponent::GetCurrentWeapon() const

@@ -87,11 +87,7 @@ public:
 
 	virtual void HandleFiring();
 
-	virtual void HandleSecondFiring(bool bWasActive);
-
 	virtual void StartSecondaryFire();
-
-	virtual void StopSecondaryFire();
 
 	virtual void StartReload(bool bFromReplication = false);
 
@@ -192,7 +188,7 @@ protected:
 
 	virtual void Fire() PURE_VIRTUAL(ASWeapon::Fire, );
 
-	virtual void SecondaryFire();
+	virtual void SecondaryFire() PURE_VIRTUAL(ASWeapon::SecondaryFire,);
 
 	void DetermineWeaponState();
 

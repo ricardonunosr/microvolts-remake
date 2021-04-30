@@ -16,7 +16,9 @@ class SHOOTERGAMEWEAPONS_API ASMelee : public ASWeapon
 	GENERATED_BODY()
 protected:
 	virtual void Fire() override;
-
+	
+	virtual void SecondaryFire() override;
+	
 	// UFUNCTION(Server, Reliable, WithValidation)
 	// void ServerTryToAttack();
 

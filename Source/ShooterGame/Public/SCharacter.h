@@ -11,7 +11,8 @@
 
 DECLARE_DELEGATE_OneParam(FEquipActionDelegate, int32);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEquipSignature, ASWeapon*, CurrentWeapon);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeathSignature);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeathSignature, ASCharacter*, DeadPawn);
 
 class ASWeapon;
 
@@ -67,9 +68,6 @@ protected:
 
 	void StartSecondaryFire();
 
-	UFUNCTION()
-	void StopSecondaryFire(bool isActive);
-
 	UFUNCTION(BlueprintCallable)
 	void ResetWeapons();
 
@@ -102,9 +100,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Character")
 	float RifleZoomedFOV;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Character")
-	float SniperZoomedFOV;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Character")
 	float ZoomInterSpeed;

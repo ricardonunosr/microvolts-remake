@@ -65,6 +65,10 @@ void ASHitscanWeapon::Fire()
 	}
 }
 
+void ASHitscanWeapon::SecondaryFire()
+{
+}
+
 void ASHitscanWeapon::OnRep_HitScanTrace()
 {
 	PlayFireEffects(HitScanTrace.TraceTo);

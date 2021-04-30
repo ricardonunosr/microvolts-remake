@@ -12,15 +12,6 @@ UCLASS(Abstract) class SHOOTERGAME_API ASHUD : public AHUD
 {
 	GENERATED_BODY()
 
-private:
-	void ShowOptionsMenu();
-
-	void HideOptionsMenu();
-
-	void EnableUIInputMode();
-
-	void EnableGameInputMode();
-
 protected:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUserWidget> MainHUDClass;
@@ -28,22 +19,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUserWidget> OptionsMenuClass;
 
-public:
-	ASHUD();
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UUserWidget> ScoreboardClass;
 
+public:
 	UPROPERTY(BlueprintReadOnly)
 	class UUserWidget* MainHUD;
 
 	UPROPERTY(BlueprintReadOnly)
 	class UUserWidget* OptionsMenu;
 
-	void CreateMainHUD();
+	UPROPERTY(BlueprintReadOnly)
+	class UUserWidget* Scoreboard;
 
-	void RemoveMainHUD();
-
-	void Tick(float DeltaTime) override;
-
-	virtual void BeginPlay() override;
-
-	void SHOptionsMenu();
+	void TogglePauseMenu();
 };

@@ -42,6 +42,8 @@ class SHOOTERGAMEWEAPONS_API ASHitscanWeapon : public ASWeapon
 protected:
 	virtual void Fire() override;
 
+	virtual void SecondaryFire() override;
+
 	UPROPERTY(ReplicatedUsing = OnRep_HitScanTrace)
 	FHitScanTrace HitScanTrace;
 

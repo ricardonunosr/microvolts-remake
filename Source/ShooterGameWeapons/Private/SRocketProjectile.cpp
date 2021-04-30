@@ -27,6 +27,7 @@ ASRocketProjectile::ASRocketProjectile()
 void ASRocketProjectile::BeginPlay()
 {
 	Super::BeginPlay();
+
 	PlayFireEffects();
 }
 
@@ -44,14 +45,15 @@ void ASRocketProjectile::Tick(float DeltaTime)
 
 void ASRocketProjectile::Explode()
 {
+	AActor* MyOwner = GetOwner();
 	FVector ActorLocation = GetActorLocation();
 	AController* InstigatorController = GetInstigatorController();
 	TArray<AActor*> IgnoreActors;
 
 	PlayExplosionEffects();
 	RadialForceComp->FireImpulse();
-	UGameplayStatics::ApplyRadialDamage(
-		GetWorld(), ExplosionDamage, ActorLocation, DamageRadius, nullptr, IgnoreActors, this, InstigatorController, true);
+	UGameplayStatics::ApplyRadialDamage(GetWorld(), ExplosionDamage, ActorLocation, DamageRadius, nullptr, IgnoreActors, MyOwner,
+		MyOwner->GetInstigatorController(), true);
 
 	// UKismetSystemLibrary::DrawDebugSphere(GetWorld(), ActorLocation, DamageRadius, 12, FColor::Red, 2, 2);
 

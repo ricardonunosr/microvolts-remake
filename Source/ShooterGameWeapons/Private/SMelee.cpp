@@ -7,3 +7,7 @@
 void ASMelee::Fire()
 {
 }
+
+void ASMelee::SecondaryFire()
+{
+}

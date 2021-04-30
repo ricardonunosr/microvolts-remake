@@ -47,18 +47,9 @@ void USHealthComponent::HandleTakeAnyDamage(
 	CurrentHealth = FMath::Clamp(CurrentHealth - Damage, 0.0f, DefaultHealth);
 
 	UE_LOG(LogTemp, Log, TEXT("Health Changed: %s"), *FString::SanitizeFloat(CurrentHealth));
-	OnHealthChanged.Broadcast(this, CurrentHealth, Damage, nullptr, nullptr, nullptr);
+	OnHealthChanged.Broadcast(this, CurrentHealth, Damage, DamageType, InstigatedBy, DamageCauser);
 
 	bIsDead = CurrentHealth <= 0.0f;
-
-	if (bIsDead)
-	{
-		ASFreeForAll* GM = Cast<ASFreeForAll>(GetWorld()->GetAuthGameMode());
-		if (GM)
-		{
-			GM->OnActorKilled.Broadcast(GetOwner(), DamageCauser, InstigatedBy);
-		}
-	}
 }
 
 void USHealthComponent::Heal(float HealAmount)

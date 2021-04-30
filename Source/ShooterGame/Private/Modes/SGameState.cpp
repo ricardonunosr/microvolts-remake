@@ -9,6 +9,11 @@ ASGameState::ASGameState()
 	RemainingTime = 0;
 }
 
+void ASGameState::MultiCastOnActorKilled_Implementation(AActor* Victim, AActor* Killer, AActor* DamageCauser)
+{
+	OnActorKilled.Broadcast(Victim, Killer, DamageCauser);
+}
+
 void ASGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
