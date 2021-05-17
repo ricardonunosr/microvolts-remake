@@ -33,6 +33,7 @@ void ASProjectileWeapon::ServerFireProjectile_Implementation()
 		ASProjectile* Projectile = GetWorld()->SpawnActor<ASProjectile>(ProjectileClass, MuzzleLocation, EyeRotation, SpawnParams);
 		if (Projectile)
 		{
+			Projectile->SetInstigator(Cast<APawn>(MyOwner));
 			Projectile->SetOwner(this);
 		}
 

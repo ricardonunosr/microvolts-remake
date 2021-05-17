@@ -27,13 +27,14 @@ void ASGrenadeProjectile::BeginPlay()
 
 void ASGrenadeProjectile::Explode()
 {
+	AActor* MyOwner = GetOwner();
 	FVector ActorLocation = GetActorLocation();
 	AController* InstigatorController = GetInstigatorController();
 	TArray<AActor*> IgnoreActors;
 
 	PlayExplosionEffects();
 	UGameplayStatics::ApplyRadialDamage(
-		GetWorld(), ExplosionDamage, ActorLocation, DamageRadius, nullptr, IgnoreActors, this, InstigatorController, true);
+		GetWorld(), ExplosionDamage, ActorLocation, DamageRadius, nullptr, IgnoreActors, MyOwner, InstigatorController, true);
 
 	GetWorldTimerManager().ClearTimer(TimerHandle_GrenadeLifeSpan);
 

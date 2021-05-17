@@ -52,10 +52,10 @@ void ASRocketProjectile::Explode()
 
 	PlayExplosionEffects();
 	RadialForceComp->FireImpulse();
-	UGameplayStatics::ApplyRadialDamage(GetWorld(), ExplosionDamage, ActorLocation, DamageRadius, nullptr, IgnoreActors, MyOwner,
-		MyOwner->GetInstigatorController(), true);
+	UGameplayStatics::ApplyRadialDamage(
+		GetWorld(), ExplosionDamage, ActorLocation, DamageRadius, nullptr, IgnoreActors, MyOwner, InstigatorController, true);
 
-	// UKismetSystemLibrary::DrawDebugSphere(GetWorld(), ActorLocation, DamageRadius, 12, FColor::Red, 2, 2);
+	UKismetSystemLibrary::DrawDebugSphere(GetWorld(), ActorLocation, DamageRadius, 12, FColor::Red, 2, 2);
 
 	Destroy();
 }
